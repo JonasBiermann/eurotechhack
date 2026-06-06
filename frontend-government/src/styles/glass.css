@@ -14,27 +14,27 @@
   --muted-2: #88909d;
   --line: #cfd5dd;
 
-  --accent: #00736c;
-  --accent-press: #005c56;
-  --accent-soft: #d7ebe9;
-  --glow: rgba(0, 115, 108, 0.20);
+  --accent: #d6202a;         /* Hong Kong red */
+  --accent-press: #b01620;
+  --accent-soft: #fbe2e3;
+  --glow: rgba(214, 32, 42, 0.20);
   --link: #1c5fb0;
 
   --ok: #16a34a;
   --amber: #c77700;
   --bad: #c4313c;
 
-  --gov-teal: #00736c;
-  --gov-teal-dark: #0a4d49;
+  --gov-teal: #d6202a;
+  --gov-teal-dark: #8f1218;
   --utility-bg: #e9edf0;
   --footer-bg: #2b2f36;
   --footer-ink: #c9ced6;
   --gov-header-h: 146px;   /* utility(34) + masthead(72) + nav(40) */
 
   /* extended semantic tokens (used by merged remote components) */
-  --bauhinia: #00736c;
-  --bauhinia-dark: #0a4d49;
-  --bauhinia-tint: rgba(0, 115, 108, 0.05);
+  --bauhinia: #d6202a;
+  --bauhinia-dark: #8f1218;
+  --bauhinia-tint: rgba(214, 32, 42, 0.05);
   --surface-2: #f6f8fa;
   --border: #cfd5dd;
   --border-strong: #b0b8c4;
