@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
 import {
   api, type Application, type CaseEvent, type CaseEventKind,
-  type Destination, type District, type Metric,
+  type Destination, type District, type Metric, type StatPin, type Stats,
 } from '../api/client';
 import type { MapState } from '../map/MapCanvas';
 import { StatsView } from './StatsView';
@@ -24,6 +24,8 @@ export function GovernmentView({ view, setView }: {
   const [districts, setDistricts] = useState<District[]>([]);
   const [gbaDests, setGbaDests] = useState<Destination[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsErr, setStatsErr] = useState(false);
 
   // Detail view replaces the list in-place — no drawer overlay.
   const [openId, setOpenId] = useState<number | null>(null);
@@ -39,9 +41,11 @@ export function GovernmentView({ view, setView }: {
     api.districts().then(setDistricts).catch(() => {});
     api.destinations().then(setGbaDests).catch(() => {});
     api.applications().then(setApps).catch(() => {});
+    api.stats().then(setStats).catch(() => setStatsErr(true));
   }, []);
 
   useEffect(() => {
+    if (tab === 'stats') return;
     setView({
       ...view,
       layer: 'heatmap',
@@ -50,11 +54,33 @@ export function GovernmentView({ view, setView }: {
       destinations: [], selectedDestId: null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metric, gbaDests]);
+  }, [metric, gbaDests, tab]);
+
+  useEffect(() => {
+    if (tab !== 'stats' || !stats || !gbaDests.length) return;
+    const statsPins: StatPin[] = stats.by_destination
+      .map((d) => {
+        const dest = gbaDests.find((g) => g.id === d.id);
+        if (!dest) return null;
+        return { id: d.id, name_en: d.name_en, name_tc: d.name_tc,
+          lat: dest.lat, lng: dest.lng, count: d.count, avg_score: d.avg_score };
+      })
+      .filter(Boolean) as StatPin[];
+    setView({ ...view, layer: 'stats', statsPins, gbaPins: [], destinations: [], selectedDestId: null, focus: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, stats, gbaDests]);
 
   const refreshApps = async () => {
     const a = await api.applications();
     setApps(a);
+  };
+
+  const switchTab = (next: 'map' | 'requests' | 'stats') => {
+    setTab(next);
+    if (next !== 'stats' && tab === 'stats') {
+      setView({ ...view, layer: 'heatmap', metric, gbaPins: gbaDests,
+        destinations: [], selectedDestId: null, focus: null });
+    }
   };
 
   const flyDistrict = (d: District) => setView({
@@ -88,22 +114,22 @@ export function GovernmentView({ view, setView }: {
     <div className="gov-console-panel">
       <div className="console-tabs">
         <button className={`console-tab ${tab === 'map' ? 'active' : ''}`}
-          onClick={() => setTab('map')}>
+          onClick={() => switchTab('map')}>
           {t('tab.map')}
         </button>
         <button className={`console-tab ${tab === 'requests' ? 'active' : ''}`}
-          onClick={() => setTab('requests')}>
+          onClick={() => switchTab('requests')}>
           {t('tab.requests')}
           {pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
         </button>
         <button className={`console-tab ${tab === 'stats' ? 'active' : ''}`}
-          onClick={() => setTab('stats')}>
+          onClick={() => switchTab('stats')}>
           {t('tab.stats')}
         </button>
       </div>
 
       <div className="panel-body console-body">
-        {tab === 'stats' ? <StatsView /> : tab === 'map' ? (
+        {tab === 'stats' ? <StatsView stats={stats} err={statsErr} /> : tab === 'map' ? (
           <>
             <Section title={t('sec.pressure')}>
               <p className="section-sub">{t('pressure.title')}</p>
