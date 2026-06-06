@@ -11,6 +11,45 @@ export const DICT: Record<string, Entry> = {
   'mode.government': { en: 'Government', zh: '政府' },
   'lang.name': { en: 'EN', zh: '繁' },
 
+  // ---- GovHK-style portal chrome ----
+  'gov.brand.sub': { en: 'Greater Bay Area Elderly Relocation Service', zh: '大灣區長者遷居服務' },
+  'gov.sitemap': { en: 'Sitemap', zh: '網站指南' },
+  'gov.contact': { en: 'Contact Us', zh: '聯絡我們' },
+  'gov.search.ph': { en: 'Search SilverLink', zh: '搜尋銀聯橋' },
+  'gov.search.btn': { en: 'Search', zh: '搜尋' },
+  'gov.signedin': { en: 'Signed in', zh: '已登入' },
+  'nav.home': { en: 'Home', zh: '主頁' },
+  'nav.residents': { en: 'Residents', zh: '居民' },
+  'nav.service': { en: 'Elderly Relocation', zh: '長者遷居' },
+  'nav.login': { en: 'Log in / Register', zh: '登入／註冊' },
+  'nav.dashboard': { en: 'My Account', zh: '我的帳戶' },
+  'nav.apply': { en: 'New Application', zh: '新申請' },
+
+  // ---- portal homepage (dashboard) ----
+  'hero.title': { en: 'Greater Bay Area Elderly Relocation', zh: '大灣區長者遷居' },
+  'hero.sub': { en: 'Find a Greater Bay Area city matched to your needs on real city data, and apply online.',
+                zh: '根據真實城市數據，尋找切合你需要的大灣區城市，並於網上提交申請。' },
+  'home.services': { en: 'Information & Services', zh: '資訊及服務' },
+  'home.yourapps': { en: 'Your applications', zh: '你的申請' },
+  'tile.start': { en: 'Start an application', zh: '開始申請' },
+  'tile.start.d': { en: 'Match cities and apply online', zh: '配對城市並網上申請' },
+  'tile.myapps': { en: 'My applications', zh: '我的申請' },
+  'tile.myapps.d': { en: 'Track your application status', zh: '查看你的申請狀態' },
+  'tile.guide': { en: 'Guidebook', zh: '申請指南' },
+  'tile.guide.d': { en: 'How relocation works', zh: '遷居流程說明' },
+  'tile.elderly': { en: 'Elderly services', zh: '長者服務' },
+  'tile.elderly.d': { en: 'Benefits and support', zh: '福利及支援' },
+
+  // ---- footer ----
+  'foot.about': { en: 'About Us', zh: '關於我們' },
+  'foot.accessibility': { en: 'Accessibility', zh: '無障礙瀏覽' },
+  'foot.help': { en: 'Help', zh: '幫助' },
+  'foot.copyright': { en: 'Copyright Notice', zh: '版權公告' },
+  'foot.privacy': { en: 'Privacy Policy', zh: '私隱政策' },
+  'foot.disclaimer': { en: 'Disclaimer', zh: '免責聲明' },
+  'foot.rights': { en: '© 2026 SilverLink — a hackathon demonstration. Not affiliated with or endorsed by the Government of the HKSAR.',
+                   zh: '© 2026 銀聯橋 — 黑客松示範項目。與香港特別行政區政府無關，亦未獲其認可。' },
+
   // ---- auth (HKID login / register) ----
   'auth.login.title': { en: 'Welcome back', zh: '歡迎回來' },
   'auth.login.sub': { en: 'Sign in with your HK identity card number.', zh: '請以香港身份證號碼登入。' },

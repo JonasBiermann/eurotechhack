@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/LanguageProvider';
 import { api, type Destination, type Profile } from '../api/client';
 import type { MapState } from '../map/MapCanvas';
 import { ScoreDial, FactorBars } from '../components/MatchScore';
+import { GovShell } from '../components/GovShell';
 
 type StepKey = 'form' | 'results';
 
@@ -25,7 +26,7 @@ function buildProfile(stepFree: boolean, care: number, prios: Prio[]): Profile {
 }
 
 export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => void; onExit: () => void }) {
-  const { t, toggle } = useI18n();
+  const { t } = useI18n();
   const [step, setStep] = useState<StepKey>('form');
   const [stepFree, setStepFree] = useState<boolean | null>(null);
   const [care, setCare] = useState<number | null>(null);
@@ -60,13 +61,11 @@ export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => 
   const progress = step === 'form' ? 50 : 100;
 
   return (
-    <>
-      <header className="topbar">
-        <div className="brand"><div className="logo" /><b>{t('app.title')}</b><small>{t('app.tagline')}</small></div>
-        <div className="spacer" />
-        <button className="btn" onClick={onExit}>← {t('dash.backToList')}</button>
-        <button className="lang-btn" onClick={toggle} title="EN / 繁體中文">{t('lang.name')}</button>
-      </header>
+    <GovShell chromeOnly crumbs={[
+      t('nav.home'), t('nav.residents'),
+      { label: t('nav.service'), onClick: onExit },
+      t('nav.apply'),
+    ]}>
       <div className="progress"><div className="fill" style={{ width: `${progress}%` }} /></div>
 
       {mapStage ? (
@@ -80,7 +79,7 @@ export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => 
       ) : (
         <div className="flow"><div className="flow-inner">{renderForm()}</div></div>
       )}
-    </>
+    </GovShell>
   );
 
   function renderForm(): ReactNode {

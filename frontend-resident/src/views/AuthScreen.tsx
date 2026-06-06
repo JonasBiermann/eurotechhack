@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
 import { useAuth } from '../auth/AuthProvider';
 import { ApiError } from '../api/client';
+import { GovShell } from '../components/GovShell';
 
 const HKID_RE = /^[A-Z]{1,2}[0-9]{6}(\([0-9A]\))?$/;
 
 export function AuthScreen() {
-  const { t, toggle } = useI18n();
+  const { t } = useI18n();
   const { login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [hkid, setHkid] = useState('');
@@ -39,16 +40,10 @@ export function AuthScreen() {
   const switchMode = () => { setMode(isRegister ? 'login' : 'register'); setErr(null); };
 
   return (
-    <>
-      <header className="topbar">
-        <div className="brand"><div className="logo" /><b>{t('app.title')}</b><small>{t('app.tagline')}</small></div>
-        <div className="spacer" />
-        <button className="lang-btn" onClick={toggle} title="EN / 繁體中文">{t('lang.name')}</button>
-      </header>
-
-      <div className="flow" style={{ alignItems: 'center', justifyContent: 'center' }}>
+    <GovShell crumbs={[t('nav.home'), t('nav.residents'), t('nav.login')]}>
+      <div className="auth-wrap">
         <div className="auth-card">
-          <div className="eyebrow">{t('app.title')} · {t('mode.resident')}</div>
+          <div className="eyebrow">{t('nav.service')}</div>
           <h1 className="q-title">{t(isRegister ? 'auth.register.title' : 'auth.login.title')}</h1>
           <p className="q-sub">{t(isRegister ? 'auth.register.sub' : 'auth.login.sub')}</p>
 
@@ -84,6 +79,6 @@ export function AuthScreen() {
           </button>
         </div>
       </div>
-    </>
+    </GovShell>
   );
 }

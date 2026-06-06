@@ -1,20 +1,29 @@
 :root {
-  --bg: #eceef3;              /* deeper grey so white surfaces read as cards */
+  --bg: #eef0f3;             /* light neutral page background (GovHK) */
   --surface: #ffffff;
-  --band: #f0f2f7;           /* section-header / inset band for structure */
-  --ink: #1a2230;
-  --muted: #5a6376;
-  --muted-2: #8b93a4;
-  --line: #cdd3e0;           /* visibly darker borders carry the structure */
+  --band: #f2f4f6;           /* section-header / inset band for structure */
+  --ink: #1d2733;
+  --muted: #59616e;
+  --muted-2: #88909d;
+  --line: #cfd5dd;           /* visible borders carry the structure */
 
-  --accent: #0d9488;         /* teal */
-  --accent-press: #0b7d72;
-  --accent-soft: #d8f0ed;
-  --glow: rgba(13, 148, 136, 0.22);
+  --accent: #00736c;         /* GovHK teal */
+  --accent-press: #005c56;
+  --accent-soft: #d7ebe9;
+  --glow: rgba(0, 115, 108, 0.20);
+  --link: #1c5fb0;           /* GovHK link blue */
 
   --ok: #16a34a;
-  --amber: #d97706;
-  --bad: #dc2626;
+  --amber: #c77700;
+  --bad: #c4313c;
+
+  /* GovHK portal chrome */
+  --gov-teal: #00736c;
+  --gov-teal-dark: #0a4d49;
+  --utility-bg: #e9edf0;
+  --footer-bg: #2b2f36;
+  --footer-ink: #c9ced6;
+  --gov-header-h: 146px;     /* utility(34) + masthead(72) + nav(40) */
 
   --radius: 4px;
   --radius-sm: 3px;
@@ -29,7 +38,7 @@ html, body, #root { height: 100%; }
 body { font-family: var(--font); color: var(--ink); background: var(--bg); overflow: hidden; }
 button { font-family: inherit; }
 
-#map { position: fixed; inset: 0; }
+#map { position: fixed; left: 0; right: 0; bottom: 0; top: var(--gov-header-h); }
 #map .maplibregl-ctrl-attrib { background: rgba(255, 255, 255, 0.7); }
 .map-fade { display: none; }
 
@@ -53,12 +62,12 @@ button { font-family: inherit; }
 .lang-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* progress */
-.progress { position: fixed; top: 64px; left: 0; right: 0; height: 4px; z-index: 40; background: var(--line); }
+.progress { position: fixed; top: var(--gov-header-h); left: 0; right: 0; height: 4px; z-index: 31; background: var(--line); }
 .progress .fill { height: 100%; background: var(--accent);
   box-shadow: 0 0 8px var(--glow); transition: width 0.35s ease; }
 
 /* ---------- full-screen single-page form (no scroll, full width) ---------- */
-.flow { position: fixed; top: 68px; left: 0; right: 0; bottom: 0; z-index: 30;
+.flow { position: fixed; top: calc(var(--gov-header-h) + 4px); left: 0; right: 0; bottom: 0; z-index: 30;
   background: var(--bg); overflow: hidden; display: flex; }
 .flow-inner { width: 100%; max-width: none; height: 100%; padding: 18px 24px 16px;
   display: flex; flex-direction: column; animation: rise 0.4s ease; }
@@ -120,7 +129,7 @@ button { font-family: inherit; }
 .center { text-align: center; }
 
 /* ---------- map-stage floating panel ---------- */
-.map-panel { position: fixed; top: 84px; right: 22px; bottom: 22px; width: 430px; z-index: 30;
+.map-panel { position: fixed; top: calc(var(--gov-header-h) + 18px); right: 22px; bottom: 22px; width: 430px; z-index: 30;
   display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; animation: rise 0.4s ease; }
 .map-panel .head { padding: 20px 22px 10px; border-bottom: 1px solid var(--line); }
@@ -198,3 +207,109 @@ input[type='text']:focus { border-color: var(--accent); box-shadow: 0 0 0 3px va
 
 .body::-webkit-scrollbar, .flow::-webkit-scrollbar { width: 9px; }
 .body::-webkit-scrollbar-thumb, .flow::-webkit-scrollbar-thumb { background: #c2c8d6; border-radius: 4px; }
+
+/* =====================================================================
+   GovHK-style portal chrome
+   ===================================================================== */
+.gov-chrome { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
+
+/* utility bar */
+.gov-utility { height: 34px; background: var(--utility-bg); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 18px; padding: 0 24px; font-size: 12.5px; }
+.gov-utility .spacer { flex: 1; }
+.gov-util-link { color: #41495a; text-decoration: none; background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: 12.5px; }
+.gov-util-link:hover { color: var(--link); text-decoration: underline; }
+.gov-langs { display: flex; align-items: center; gap: 8px; }
+.gov-lang { background: none; border: 0; cursor: pointer; font: inherit; font-size: 12.5px;
+  color: #41495a; padding: 0; }
+.gov-lang.on { color: var(--gov-teal); font-weight: 800; }
+.gov-lang:hover { color: var(--link); }
+.gov-divider { color: var(--muted-2); }
+
+/* masthead */
+.gov-masthead { height: 72px; background: #fff; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 14px; padding: 0 24px; }
+.gov-logo { width: 44px; height: 44px; flex: none; display: grid; place-items: center;
+  background: var(--gov-teal); color: #fff; font-weight: 800; font-size: 20px; letter-spacing: -1px;
+  border-radius: 3px; }
+.gov-brand { display: flex; flex-direction: column; line-height: 1.15; }
+.gov-brand .nm { font-size: 21px; font-weight: 800; color: var(--ink); }
+.gov-brand .nm .tc { color: var(--gov-teal); margin-left: 6px; font-weight: 700; }
+.gov-brand .sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.gov-search { margin-left: auto; display: flex; align-items: stretch; height: 38px;
+  border: 1.5px solid var(--line); border-radius: 3px; overflow: hidden; max-width: 320px; width: 38vw; min-width: 180px; }
+.gov-search input { border: 0; outline: none; font-size: 14px; padding: 0 12px; width: 100%; }
+.gov-search button { border: 0; background: var(--gov-teal); color: #fff; cursor: pointer;
+  font-weight: 700; font-size: 13px; padding: 0 16px; }
+.gov-search button:hover { background: var(--accent-press); }
+
+/* teal navigation / breadcrumb band */
+.gov-nav { height: 40px; background: var(--gov-teal); color: #fff;
+  display: flex; align-items: center; padding: 0 24px; gap: 10px; }
+.gov-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; flex: 1; min-width: 0; }
+.gov-breadcrumb .crumb { color: #d6efed; }
+.gov-breadcrumb .crumb.cur { color: #fff; font-weight: 700; }
+.gov-breadcrumb .crumb-link { background: none; border: 0; cursor: pointer; font: inherit; font-size: 13px;
+  color: #d6efed; padding: 0; text-decoration: underline; }
+.gov-breadcrumb .crumb-link:hover { color: #fff; }
+.gov-breadcrumb .sep { color: rgba(255,255,255,0.55); }
+.gov-account { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.gov-account .who2 { color: #eafffb; }
+.gov-account .out { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35);
+  color: #fff; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 12px; border-radius: 3px; }
+.gov-account .out:hover { background: rgba(255,255,255,0.26); }
+
+/* main scroll region beneath the fixed chrome */
+.gov-main { position: fixed; left: 0; right: 0; bottom: 0; top: var(--gov-header-h);
+  overflow-y: auto; background: var(--bg); }
+.gov-content { max-width: 1080px; margin: 0 auto; padding: 26px 24px 40px; animation: rise 0.4s ease; }
+
+/* hero banner */
+.gov-hero { background: linear-gradient(115deg, var(--gov-teal), var(--gov-teal-dark)); color: #fff;
+  border-radius: var(--radius); padding: 34px 34px; margin-bottom: 26px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.gov-hero h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.3px; }
+.gov-hero p { margin-top: 10px; font-size: 16px; color: #e6fffb; max-width: 560px; line-height: 1.5; }
+.gov-hero .btn-primary { background: #fff; color: var(--gov-teal-dark); box-shadow: none; }
+.gov-hero .btn-primary:hover { background: #eafffb; }
+
+/* section heading (GovHK underlined teal bar) */
+.gov-sec-title { font-size: 18px; font-weight: 800; color: var(--ink); margin: 28px 0 14px;
+  padding-bottom: 8px; border-bottom: 3px solid var(--gov-teal); }
+
+/* category tiles */
+.gov-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.gov-tile { text-align: left; background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 16px; cursor: pointer; transition: 0.15s; display: flex; flex-direction: column; gap: 8px;
+  border-top: 3px solid var(--gov-teal); }
+.gov-tile:hover { box-shadow: var(--shadow); transform: translateY(-2px); border-color: var(--gov-teal); }
+.gov-tile .ic { width: 42px; height: 42px; border-radius: 3px; background: var(--accent-soft);
+  color: var(--gov-teal); display: grid; place-items: center; }
+.gov-tile .ic svg { width: 24px; height: 24px; }
+.gov-tile h4 { font-size: 16px; color: var(--ink); }
+.gov-tile p { font-size: 13px; color: var(--muted); line-height: 1.4; }
+
+/* applications list on the portal home */
+.gov-applist { display: flex; flex-direction: column; gap: 10px; }
+.applist-empty { background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 28px; text-align: center; color: var(--muted); }
+
+/* footer */
+.gov-footer { background: var(--footer-bg); color: var(--footer-ink); margin-top: 28px; }
+.gov-footer .fin { max-width: 1080px; margin: 0 auto; padding: 22px 24px 26px; }
+.gov-foot-links { display: flex; flex-wrap: wrap; gap: 8px 18px; padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.12); }
+.gov-foot-links a { color: var(--footer-ink); text-decoration: none; font-size: 13px; cursor: pointer; }
+.gov-foot-links a:hover { color: #fff; text-decoration: underline; }
+.gov-foot-note { margin-top: 14px; font-size: 12px; color: #99a0aa; line-height: 1.6; }
+
+/* auth screen inside gov chrome */
+.auth-wrap { min-height: calc(100vh - var(--gov-header-h)); display: flex; align-items: center;
+  justify-content: center; padding: 40px 16px; }
+
+/* responsive: stack tiles on narrow screens */
+@media (max-width: 880px) {
+  .gov-tiles { grid-template-columns: repeat(2, 1fr); }
+  .gov-search { display: none; }
+}
