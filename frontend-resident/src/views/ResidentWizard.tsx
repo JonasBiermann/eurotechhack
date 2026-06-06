@@ -45,7 +45,7 @@ interface FormState {
   chronic: number; specialty: string; residential: boolean;
 }
 
-export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => void; onExit: () => void }) {
+export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => void; onExit: (appId?: number) => void }) {
   const { t } = useI18n();
   const [step, setStep] = useState<StepKey>('form');
   const [f, setF] = useState<FormState>({
@@ -223,10 +223,12 @@ function Slider({ value, min, max, step, fmt, onChange }: {
   value: number; min: number; max: number; step: number;
   fmt: (v: number) => string; onChange: (v: number) => void;
 }) {
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return (
     <div className="slider">
       <div className="slider-val">{fmt(value)}</div>
       <input type="range" min={min} max={max} step={step} value={value}
+        style={{ ['--pct' as any]: `${pct}%` }}
         onChange={(e) => onChange(Number(e.target.value))} />
     </div>
   );
@@ -235,15 +237,19 @@ function Slider({ value, min, max, step, fmt, onChange }: {
 /* -------------------- results + submit (map stage) -------------------- */
 function ResultsPanel({ ranked, choice, setChoice, onFocusCity, profile, onBack, onExit }: {
   ranked: Destination[]; choice: Destination | null; setChoice: (d: Destination) => void;
-  onFocusCity: (d: Destination) => void; profile: Profile; onBack: () => void; onExit: () => void;
+  onFocusCity: (d: Destination) => void; profile: Profile; onBack: () => void; onExit: (appId?: number) => void;
 }) {
   const { t, L } = useI18n();
   const [openId, setOpenId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [appId, setAppId] = useState<number | null>(null);
-  const [status, setStatus] = useState('submitted');
-  const [note, setNote] = useState<string | null>(null);
   const persona = ranked[0]?.persona;
+
+  // Opening a city's full breakdown expands the panel to ~2/3 of the screen and
+  // slides the map over to the left (driven by CSS off this body class).
+  useEffect(() => {
+    document.body.classList.toggle('panel-wide', openId !== null);
+    return () => document.body.classList.remove('panel-wide');
+  }, [openId]);
 
   const submit = async () => {
     if (!choice) return;
@@ -251,42 +257,14 @@ function ResultsPanel({ ranked, choice, setChoice, onFocusCity, profile, onBack,
     try {
       const ordered = [choice, ...ranked.filter((d) => d.id !== choice.id)];
       const res = await api.createApplication({ origin_address: '', profile, destinations: ordered });
-      setAppId(res.id);
-      setStatus('submitted');
+      // The application starts in 'started' — the resident finishes it (documents +
+      // truth declaration) from its overview, which we open directly.
+      onExit(res.id);
     } catch (e) {
       // one application per resident — if the backend already has one, go to the dashboard
       if (e instanceof ApiError && e.status === 409) { onExit(); return; }
     } finally { setSubmitting(false); }
   };
-  const refresh = async () => {
-    if (appId == null) return;
-    const a = await api.application(appId);
-    setStatus(a.status); setNote(a.note);
-  };
-
-  if (appId != null) {
-    return (
-      <>
-        <div className="body">
-          <div className="done">
-            <div className="check">✓</div>
-            <h2 style={{ fontSize: 24 }}>{t('sub.done.title')}</h2>
-            <p className="muted" style={{ marginTop: 8 }}>{t('sub.done.sub')}</p>
-            <div style={{ marginTop: 14 }}>
-              <span className={`badge badge-${status}`} style={{ fontSize: 14, padding: '8px 16px' }}>{t(`status.${status}`)}</span>
-            </div>
-            {note && <div className="optin" style={{ marginTop: 16, textAlign: 'left' }}><b>{t('sub.officerNote')}:</b>&nbsp;{note}</div>}
-          </div>
-        </div>
-        <div className="foot">
-          <div className="actions" style={{ margin: 0 }}>
-            <button className="btn" onClick={refresh}>↻ {t('status.under_review')}</button>
-            <button className="btn btn-primary grow" onClick={onExit}>{t('dash.backToList')}</button>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>
@@ -337,7 +315,7 @@ function ResultsPanel({ ranked, choice, setChoice, onFocusCity, profile, onBack,
         <div className="actions" style={{ margin: 0 }}>
           <button className="btn" onClick={onBack}>←</button>
           <button className="btn btn-primary grow" disabled={submitting || !choice} onClick={submit}>
-            {submitting ? t('sub.submitting') : t('sub.submit')}
+            {submitting ? t('sub.submitting') : t('sub.start')}
           </button>
         </div>
       </div>

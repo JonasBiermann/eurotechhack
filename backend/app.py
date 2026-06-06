@@ -83,12 +83,14 @@ def register(payload: dict = Body(...)):
     name = (payload.get("name") or "").strip()
     if not name:
         raise HTTPException(400, "name is required")
+    if not payload.get("ehealth_consent"):
+        raise HTTPException(400, "E-Health System consent is required to register")
     conn = db.connect()
     if conn.execute("SELECT 1 FROM residents WHERE hkid=?", (hkid,)).fetchone():
         conn.close()
         raise HTTPException(409, "this HKID is already registered")
     cur = conn.execute(
-        "INSERT INTO residents (hkid, name, created_at) VALUES (?,?,?)",
+        "INSERT INTO residents (hkid, name, created_at, ehealth_consent) VALUES (?,?,?,1)",
         (hkid, name, _now()),
     )
     resident_id = cur.lastrowid
@@ -257,7 +259,12 @@ def create_application(payload: dict = Body(...), resident: dict = Depends(curre
     name is taken from the account, not the client payload. One per resident —
     a relocation happens only once."""
     conn = db.connect()
-    if conn.execute("SELECT 1 FROM applications WHERE resident_id=?", (resident["id"],)).fetchone():
+    # One *live* application per resident — a rejected application frees the slot so
+    # the resident can start over.
+    if conn.execute(
+        "SELECT 1 FROM applications WHERE resident_id=? AND status != 'rejected'",
+        (resident["id"],),
+    ).fetchone():
         conn.close()
         raise HTTPException(409, "you already have an application")
     cur = conn.execute(
@@ -265,7 +272,7 @@ def create_application(payload: dict = Body(...), resident: dict = Depends(curre
            (created_at, status, applicant_name, origin_address,
             profile_json, destinations_json, note, decided_at, resident_id)
            VALUES (?,?,?,?,?,?,?,?,?)""",
-        (_now(), "submitted", resident["name"], payload.get("origin_address"),
+        (_now(), "started", resident["name"], payload.get("origin_address"),
          json.dumps(payload.get("profile", {}), ensure_ascii=False),
          json.dumps(payload.get("destinations", []), ensure_ascii=False), None, None,
          resident["id"]),
@@ -273,7 +280,83 @@ def create_application(payload: dict = Body(...), resident: dict = Depends(curre
     conn.commit()
     app_id = cur.lastrowid
     conn.close()
+    return {"id": app_id, "status": "started"}
+
+
+@app.post("/api/applications/{app_id}/submit")
+def submit_application(app_id: int, resident: dict = Depends(current_resident)):
+    """Resident confirms the truth declaration and submits a started application.
+    Only the owner may submit, and only from the 'started' state. Once submitted,
+    the application appears in the government officer queue."""
+    conn = db.connect()
+    row = conn.execute(
+        "SELECT status, resident_id FROM applications WHERE id=?", (app_id,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "application not found")
+    if row["resident_id"] != resident["id"]:
+        conn.close()
+        raise HTTPException(403, "not your application")
+    if row["status"] != "started":
+        conn.close()
+        raise HTTPException(409, "application has already been submitted")
+    conn.execute(
+        "UPDATE applications SET status='submitted', declaration_at=? WHERE id=?",
+        (_now(), app_id),
+    )
+    conn.commit()
+    conn.close()
     return {"id": app_id, "status": "submitted"}
+
+
+# ---------------------------------------------- permits & allowances (self-service)
+
+_PERMIT_KINDS = ("home_return_permit", "guangdong_allowance")
+_ALLOWANCE_SCHEMES = ("oaa", "oala")
+
+
+@app.post("/api/permits")
+def create_permit(payload: dict = Body(...), resident: dict = Depends(current_resident)):
+    """Persist a resident's self-service permit / allowance application.
+    Resident-only — these are not surfaced in the government officer console."""
+    kind = payload.get("kind")
+    if kind not in _PERMIT_KINDS:
+        raise HTTPException(400, f"kind must be one of {_PERMIT_KINDS}")
+    scheme = payload.get("scheme")
+    if kind == "guangdong_allowance":
+        if scheme not in _ALLOWANCE_SCHEMES:
+            raise HTTPException(400, f"scheme must be one of {_ALLOWANCE_SCHEMES}")
+    else:
+        scheme = None
+    conn = db.connect()
+    cur = conn.execute(
+        """INSERT INTO permit_applications
+           (resident_id, kind, scheme, status, details_json, created_at)
+           VALUES (?,?,?,?,?,?)""",
+        (resident["id"], kind, scheme, "submitted",
+         json.dumps(payload.get("details", {}), ensure_ascii=False), _now()),
+    )
+    conn.commit()
+    pid = cur.lastrowid
+    conn.close()
+    return {"id": pid, "kind": kind, "scheme": scheme, "status": "submitted"}
+
+
+@app.get("/api/permits/mine")
+def my_permits(resident: dict = Depends(current_resident)):
+    conn = db.connect()
+    rows = conn.execute(
+        "SELECT * FROM permit_applications WHERE resident_id=? ORDER BY id DESC",
+        (resident["id"],),
+    ).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["details"] = json.loads(d.pop("details_json") or "{}")
+        out.append(d)
+    return out
 
 
 @app.post("/api/applications/{app_id}/documents")

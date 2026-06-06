@@ -60,6 +60,15 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
   // re-apply on prop change
   useEffect(() => { if (ready.current) apply(); /* eslint-disable-next-line */ }, [view, lang]);
 
+  // keep the map canvas in sync when the container shifts (e.g. the results
+  // panel expands and the map slides over to the left third)
+  useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(() => map.current?.resize());
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+
   function removeLayer(id: string) {
     const m = map.current!;
     if (m.getLayer(id)) m.removeLayer(id);

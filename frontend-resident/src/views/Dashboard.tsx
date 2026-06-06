@@ -3,7 +3,9 @@ import { useI18n } from '../i18n/LanguageProvider';
 import { api, type Application } from '../api/client';
 import { GovShell } from '../components/GovShell';
 import { Dropzone } from '../components/Dropzone';
-import { ScoreDial, ringClass } from '../components/MatchScore';
+import { ScoreDial, FactorBars, ringClass } from '../components/MatchScore';
+import { MatchDetails } from '../components/MatchDetails';
+import { PermitsPage } from './PermitsPage';
 
 /* simple inline line-icons (no emoji) */
 const Icon = {
@@ -11,19 +13,44 @@ const Icon = {
   list: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.2"/><circle cx="3.5" cy="12" r="1.2"/><circle cx="3.5" cy="18" r="1.2"/></svg>,
   guide: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z"/><path d="M8 7h7M8 11h7"/></svg>,
   elderly: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="6" r="3"/><path d="M9 21v-5l-2-2 1-5h6l1 5-2 2v5"/></svg>,
+  permit: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="11" r="2"/><path d="M13 10h5M13 14h5M5 16h6"/></svg>,
 };
 
-export function Dashboard({ onNew }: { onNew: () => void }) {
+/* Required documents — checklist completion is derived from the uploaded docs in order. */
+const REQUIRED_DOCS = ['doc.apartment', 'doc.healthcare', 'doc.job'] as const;
+
+type Page = 'home' | 'guide' | 'elderly' | 'permits';
+
+export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
+  onNew: () => void; initialAppId?: number | null; onConsumedInitial?: () => void;
+}) {
   const { t, L, lang } = useI18n();
   const [apps, setApps] = useState<Application[] | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [page, setPage] = useState<Page>('home');
+  const [declared, setDeclared] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const load = () => api.myApplications().then(setApps).catch(() => setApps([]));
   useEffect(() => { load(); }, []);
+
+  // After "Start", App passes the new application's id so we open its overview directly.
+  useEffect(() => {
+    if (initialAppId != null) { setSelectedId(initialAppId); setPage('home'); onConsumedInitial?.(); }
+  }, [initialAppId, onConsumedInitial]);
+
+  // Reset the truth declaration when switching between applications.
+  useEffect(() => { setDeclared(false); }, [selectedId]);
+
   const upload = async (id: number, files: File[]) => {
     for (const f of files) { try { await api.uploadDocument(id, f); } catch { /* ignore */ } }
     load();
+  };
+  const submitApp = async (id: number) => {
+    setSubmitting(true);
+    try { await api.submitApplication(id); await load(); } catch { /* ignore */ }
+    finally { setSubmitting(false); }
   };
 
   const fmtDate = (iso: string) => {
@@ -34,10 +61,77 @@ export function Dashboard({ onNew }: { onNew: () => void }) {
 
   const selected = apps?.find((a) => a.id === selectedId) ?? null;
 
-  // ---------- application detail ----------
+  // ---------- permits & allowances ----------
+  if (page === 'permits') {
+    return <PermitsPage onBack={() => setPage('home')} />;
+  }
+
+  // ---------- content pages: Guidebook / Elderly services ----------
+  if (page === 'guide' || page === 'elderly') {
+    const isGuide = page === 'guide';
+    const steps = isGuide
+      ? ['guide.s1', 'guide.s2', 'guide.s3', 'guide.s4', 'guide.s5']
+      : ['elderly.s1', 'elderly.s2', 'elderly.s3', 'elderly.s4'];
+    return (
+      <GovShell crumbs={[t('nav.home'), t('nav.residents'),
+        { label: t('nav.service'), onClick: () => setPage('home') },
+        t(isGuide ? 'tile.guide' : 'tile.elderly')]}>
+        <div className="gov-content">
+          <button className="btn" onClick={() => setPage('home')}>← {t('page.back')}</button>
+          <section className="gov-hero" style={{ marginTop: 16 }}>
+            <div>
+              <h1>{t(isGuide ? 'guide.title' : 'elderly.title')}</h1>
+              <p>{t(isGuide ? 'guide.sub' : 'elderly.sub')}</p>
+            </div>
+          </section>
+
+          <div className="page-prose">
+            {steps.map((s) => (
+              <section className="section" key={s}>
+                <h3 className="prose-h">{t(`${s}.t`)}</h3>
+                <p className="prose-p">{t(`${s}.d`)}</p>
+              </section>
+            ))}
+          </div>
+
+          {isGuide ? (
+            <>
+              <h2 className="gov-sec-title">{t('guide.faqTitle')}</h2>
+              <section className="section">
+                <ul className="prose-list">
+                  <li>{t('guide.faq1')}</li>
+                  <li>{t('guide.faq2')}</li>
+                  <li>{t('guide.faq3')}</li>
+                </ul>
+              </section>
+            </>
+          ) : (
+            <section className="section helpline">
+              <h3 className="prose-h">{t('elderly.helpline')}</h3>
+              <p className="prose-p">{t('elderly.helpline.d')}</p>
+            </section>
+          )}
+        </div>
+      </GovShell>
+    );
+  }
+
+  // ---------- application overview (selected) ----------
   if (selected) {
     const a = selected;
-    const top = a.top_destination;
+    const top = a.top_destination ?? a.destinations[0] ?? null;
+    const decided = a.status === 'approved' || a.status === 'rejected';
+    const isStarted = a.status === 'started';
+    const docDone = (i: number) => a.documents.length > i;
+    const allDocs = REQUIRED_DOCS.every((_, i) => docDone(i));
+    const checklist = [
+      { label: t('todo.started'), desc: t('todo.started.d'), done: true },
+      ...REQUIRED_DOCS.map((k, i) => ({ label: t(k), desc: t(`${k}.d`), done: docDone(i) })),
+      { label: t('todo.declare'), desc: t('todo.declare.d'), done: !isStarted },
+      { label: t('todo.review'), desc: t('todo.review.d'), done: decided },
+    ];
+    const doneCount = checklist.filter((c) => c.done).length;
+
     return (
       <GovShell crumbs={[t('nav.home'), t('nav.residents'),
         { label: t('nav.service'), onClick: () => setSelectedId(null) },
@@ -45,58 +139,123 @@ export function Dashboard({ onNew }: { onNew: () => void }) {
         <div className="gov-content">
           <button className="btn" onClick={() => setSelectedId(null)}>← {t('dash.backToList')}</button>
 
-          <h2 className="gov-sec-title" style={{ marginTop: 16 }}>{t('dash.app')} #{a.id}</h2>
-          <section className="section">
-            <div className="kv"><span>{t('app.status')}</span><b><span className={`badge badge-${a.status}`}>{t(`status.${a.status}`)}</span></b></div>
-            <div className="kv"><span>{t('dash.submitted_on')}</span><b>{fmtDate(a.created_at)}</b></div>
-            <div className="kv"><span>{t('sub.firstChoice')}</span><b>{top ? L(top, 'name') : '–'}</b></div>
-            <div className="kv" style={{ borderBottom: 0 }}><span>{t('app.matchscore')}</span><b>{top?.match ? `${Math.round(top.match.score)}/100` : '–'}</b></div>
-            {a.note && <div className="optin" style={{ textAlign: 'left' }}><b>{t('sub.officerNote')}:</b>&nbsp;{a.note}</div>}
+          {/* ---- to-do checklist (top of the overview) ---- */}
+          <h2 className="gov-sec-title" style={{ marginTop: 16 }}>{t('todo.title')}</h2>
+          <section className="section todo">
+            <div className="todo-head">
+              <p className="sub" style={{ margin: 0 }}>{t('todo.sub')}</p>
+              <span className="todo-count">{doneCount}/{checklist.length} {t('todo.progress')}</span>
+            </div>
+            <div className="todo-list">
+              {checklist.map((c, i) => (
+                <div className={`todo-item ${c.done ? 'done' : ''}`} key={i}>
+                  <span className="todo-box">{c.done ? '✓' : ''}</span>
+                  <div className="todo-text">
+                    <span className="todo-label">{c.label}</span>
+                    <span className="todo-desc">{c.desc}</span>
+                  </div>
+                  <span className={`todo-pill ${c.done ? 'ok' : ''}`}>{c.done ? t('todo.done') : t('todo.pending')}</span>
+                </div>
+              ))}
+            </div>
+
+            {a.documents.length > 0 && (
+              <div style={{ margin: '12px 0 4px' }}>
+                {a.documents.map((d) => (
+                  <div className="doc" key={d.id}><span className="fname">{d.filename}</span></div>
+                ))}
+              </div>
+            )}
+
+            {isStarted && (
+              <>
+                <p className="sub" style={{ margin: '12px 0 8px' }}>{t('doc.uploadMore')}</p>
+                <Dropzone onFiles={(fs) => upload(a.id, fs)} />
+
+                {/* truth declaration + submit — unlocked once every document is in */}
+                {allDocs ? (
+                  <div className="declare-box">
+                    <button type="button" className={`toggle ${declared ? 'on' : ''}`}
+                      style={{ alignItems: 'flex-start' }} onClick={() => setDeclared((v) => !v)}>
+                      <span className={`tg-box ${declared ? 'on' : ''}`}>{declared ? '✓' : ''}</span>
+                      <span className="tg-label">{t('declare.text')}</span>
+                    </button>
+                    <button className="btn btn-primary btn-lg grow" style={{ marginTop: 12 }}
+                      disabled={!declared || submitting} onClick={() => submitApp(a.id)}>
+                      {submitting ? t('sub.submitting') : t('sub.submit')}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>{t('declare.locked')}</p>
+                )}
+              </>
+            )}
           </section>
 
-          {a.status === 'approved' && (
+          {/* ---- your selected city with all the advantages ---- */}
+          {top && (
             <>
-              <h2 className="gov-sec-title">{t('dash.upload.title')}</h2>
+              <h2 className="gov-sec-title">{t('app.yourCity')}</h2>
+              <div className={`dcard city-hero ${ringClass(top.match?.score ?? 0)}`} style={{ cursor: 'default' }}>
+                <ScoreDial score={top.match?.score ?? 0} />
+                <div className="info">
+                  <h4>{L(top, 'name')} <span className="sec">{L(top, 'name') === top.name_en ? top.name_tc : top.name_en}</span></h4>
+                  <div className="attrs">
+                    <span className="save-pill">{t('res.netSave')} <b>{`HK$${Math.round(top.net_savings_hkd ?? top.monthly_savings_hkd ?? 0).toLocaleString()}`}</b>{t('common.perMonth')}</span>
+                    <span>{t('d.travel')} <b>{top.travel_time_hr}{t('common.hours')}</b></span>
+                  </div>
+                  <div className="kv" style={{ borderBottom: 0, paddingBottom: 0 }}>
+                    <span>{t('app.status')}</span>
+                    <b><span className={`badge badge-${a.status}`}>{t(`status.${a.status}`)}</span></b>
+                  </div>
+                  {a.note && <div className="optin" style={{ textAlign: 'left' }}><b>{t('sub.officerNote')}:</b>&nbsp;{a.note}</div>}
+                </div>
+              </div>
+
+              <h2 className="gov-sec-title">{t('app.advantages')}</h2>
               <section className="section">
-                <p className="sub">{t('dash.upload.sub')}</p>
-                {a.documents.length > 0
-                  ? <div style={{ marginBottom: 10 }}>{a.documents.map((d) => (
-                      <div className="doc" key={d.id}><span className="fname">{d.filename}</span></div>))}</div>
-                  : <div className="muted" style={{ marginBottom: 10, fontSize: 13 }}>{t('docs.none')}</div>}
-                <Dropzone onFiles={(fs) => upload(a.id, fs)} />
+                {top.match && <FactorBars factors={top.match.factors} />}
+                <MatchDetails d={top} />
               </section>
             </>
           )}
 
-          <h2 className="gov-sec-title">{t('results.title')}</h2>
-          <div className="gov-applist">
-            {a.destinations.map((d, i) => (
-              <div key={d.id} className={`dcard ${ringClass(d.match?.score ?? 0)}`} style={{ cursor: 'default' }}>
-                <div className="rank">{i + 1}</div>
-                <ScoreDial score={d.match?.score ?? 0} />
-                <div className="info">
-                  <h4>{L(d, 'name')}</h4>
-                  <div className="attrs">
-                    <span>{t('d.cost')} <b>{t('common.hkd')}{d.monthly_cost.toLocaleString()}</b></span>
-                    <span>{t('d.travel')} <b>{d.travel_time_hr}{t('common.hours')}</b></span>
+          {/* ---- other ranked options ---- */}
+          {a.destinations.length > 1 && (
+            <>
+              <h2 className="gov-sec-title">{t('app.otherOptions')}</h2>
+              <div className="gov-applist">
+                {a.destinations.filter((d) => d.id !== top?.id).map((d, i) => (
+                  <div key={d.id} className={`dcard ${ringClass(d.match?.score ?? 0)}`} style={{ cursor: 'default' }}>
+                    <div className="rank">{i + 2}</div>
+                    <ScoreDial score={d.match?.score ?? 0} />
+                    <div className="info">
+                      <h4>{L(d, 'name')}</h4>
+                      <div className="attrs">
+                        <span>{t('d.cost')} <b>{t('common.hkd')}{d.monthly_cost.toLocaleString()}</b></span>
+                        <span>{t('d.travel')} <b>{d.travel_time_hr}{t('common.hours')}</b></span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </GovShell>
     );
   }
 
   // ---------- portal homepage ----------
-  const hasApp = (apps?.length ?? 0) > 0;
+  // A rejected application no longer counts as "live", so the resident may start a new one.
+  const hasApp = (apps?.some((a) => a.status !== 'rejected')) ?? false;
   const tiles = [
     // one application per resident — the "start" tile disappears once you have one
     ...(hasApp ? [] : [{ ic: Icon.apply, title: t('tile.start'), desc: t('tile.start.d'), onClick: onNew }]),
     { ic: Icon.list, title: t('tile.myapps'), desc: t('tile.myapps.d'), onClick: scrollToList },
-    { ic: Icon.guide, title: t('tile.guide'), desc: t('tile.guide.d'), onClick: scrollToList },
-    { ic: Icon.elderly, title: t('tile.elderly'), desc: t('tile.elderly.d'), onClick: scrollToList },
+    { ic: Icon.permit, title: t('tile.permits'), desc: t('tile.permits.d'), onClick: () => setPage('permits') },
+    { ic: Icon.guide, title: t('tile.guide'), desc: t('tile.guide.d'), onClick: () => setPage('guide') },
+    { ic: Icon.elderly, title: t('tile.elderly'), desc: t('tile.elderly.d'), onClick: () => setPage('elderly') },
   ];
 
   return (

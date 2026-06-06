@@ -58,6 +58,7 @@ export const DICT: Record<string, Entry> = {
   'apps.saved': { en: 'Decision saved', zh: '審批已儲存' },
   'apps.profileSummary': { en: 'Profile & match factors', zh: '個人條件及配對因素' },
 
+  'status.started': { en: 'In progress', zh: '進行中' },
   'status.submitted': { en: 'Submitted', zh: '已提交' },
   'status.under_review': { en: 'Under review', zh: '審核中' },
   'status.approved': { en: 'Approved', zh: '已批准' },

@@ -5,7 +5,7 @@ interface Auth {
   resident: Resident | null;
   loading: boolean;
   login: (hkid: string) => Promise<void>;
-  register: (hkid: string, name: string) => Promise<void>;
+  register: (hkid: string, name: string, ehealthConsent: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -29,8 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(token);
     setResident(resident);
   };
-  const register = async (hkid: string, name: string) => {
-    const { token, resident } = await api.register(hkid, name);
+  const register = async (hkid: string, name: string, ehealthConsent: boolean) => {
+    const { token, resident } = await api.register(hkid, name, ehealthConsent);
     setAuthToken(token);
     setResident(resident);
   };

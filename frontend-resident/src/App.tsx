@@ -16,6 +16,7 @@ export default function App() {
   const { resident, loading } = useAuth();
   const [view, setView] = useState<MapState>(DEFAULT_VIEW);
   const [page, setPage] = useState<'dashboard' | 'new'>('dashboard');
+  const [openAppId, setOpenAppId] = useState<number | null>(null);
 
   if (loading) {
     return <div className="app"><div className="center-msg" style={{ marginTop: '45vh' }}>{t('common.loading')}</div></div>;
@@ -31,8 +32,10 @@ export default function App() {
     <div className="app">
       <MapCanvas view={view} lang={lang} />
       {page === 'dashboard'
-        ? <Dashboard onNew={() => setPage('new')} />
-        : <ResidentWizard setView={setView} onExit={() => { setView(DEFAULT_VIEW); setPage('dashboard'); }} />}
+        ? <Dashboard onNew={() => { setOpenAppId(null); setPage('new'); }}
+            initialAppId={openAppId} onConsumedInitial={() => setOpenAppId(null)} />
+        : <ResidentWizard setView={setView}
+            onExit={(appId) => { setView(DEFAULT_VIEW); setOpenAppId(appId ?? null); setPage('dashboard'); }} />}
     </div>
   );
 }
