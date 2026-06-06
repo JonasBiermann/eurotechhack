@@ -7,19 +7,19 @@
   --muted-2: #88909d;
   --line: #cfd5dd;           /* visible borders carry the structure */
 
-  --accent: #d6202a;         /* Hong Kong red */
-  --accent-press: #b01620;
-  --accent-soft: #fbe2e3;
-  --glow: rgba(214, 32, 42, 0.20);
+  --accent: #00736c;         /* SilverLink teal */
+  --accent-press: #005c56;
+  --accent-soft: #d7ebe9;
+  --glow: rgba(0, 115, 108, 0.20);
   --link: #1c5fb0;           /* GovHK link blue */
 
   --ok: #16a34a;
   --amber: #c77700;
   --bad: #c4313c;
 
-  /* GovHK portal chrome (HK red) */
-  --gov-teal: #d6202a;
-  --gov-teal-dark: #8f1218;
+  /* GovHK portal chrome (teal) */
+  --gov-teal: #00736c;
+  --gov-teal-dark: #0a4d49;
   --utility-bg: #e9edf0;
   --footer-bg: #2b2f36;
   --footer-ink: #c9ced6;

@@ -31,6 +31,25 @@
   --footer-ink: #c9ced6;
   --gov-header-h: 146px;   /* utility(34) + masthead(72) + nav(40) */
 
+  /* extended semantic tokens (used by merged remote components) */
+  --bauhinia: #00736c;
+  --bauhinia-dark: #0a4d49;
+  --bauhinia-tint: rgba(0, 115, 108, 0.05);
+  --surface-2: #f6f8fa;
+  --border: #cfd5dd;
+  --border-strong: #b0b8c4;
+  --ink-2: #3d4754;
+  --info: #1c5fb0;
+  --info-soft: rgba(31, 95, 166, 0.10);
+  --gold: #c9a55a;
+  --gold-dark: #8a6a1f;
+  --gold-soft: rgba(201, 165, 90, 0.12);
+  --success: #0f8a6a;
+  --success-soft: rgba(15, 138, 106, 0.10);
+  --danger: #b91c2c;
+  --danger-soft: rgba(185, 28, 44, 0.08);
+  --font-serif: Georgia, 'Times New Roman', serif;
+
   --radius: 4px;
   --radius-sm: 3px;
   --shadow: 0 6px 18px rgba(20, 25, 40, 0.08);
