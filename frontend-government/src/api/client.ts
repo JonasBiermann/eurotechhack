@@ -47,10 +47,22 @@ export interface DocMeta {
   id: number; filename: string; size: number; content_type: string; uploaded_at: string;
 }
 
+export type CaseEventKind = 'note' | 'contact' | 'visit' | 'followup'
+  | 'document' | 'system' | 'status';
+
+export interface CaseEvent {
+  id: number; created_at: string; author: string;
+  kind: CaseEventKind;
+  title_en: string; title_tc: string;
+  body: string | null;
+  meta: Record<string, unknown>;
+}
+
 export interface Application {
   id: number; created_at: string; status: string;
   applicant_name: string; origin_address: string;
   profile: Profile; destinations: Destination[]; documents: DocMeta[];
+  events: CaseEvent[];
   top_destination: Destination | null; note: string | null; decided_at: string | null;
 }
 
@@ -94,4 +106,9 @@ export const api = {
   application: (id: number) => jget<Application>(`/api/applications/${id}`),
   decide: (id: number, decision: string, note: string) =>
     jpost<Application>(`/api/applications/${id}/decision`, { decision, note }),
+  events: (id: number) => jget<CaseEvent[]>(`/api/applications/${id}/events`),
+  addEvent: (id: number, payload: {
+    kind: CaseEventKind; body?: string; title_en?: string; title_tc?: string;
+    author?: string;
+  }) => jpost<CaseEvent>(`/api/applications/${id}/events`, payload),
 };

@@ -11,6 +11,18 @@ export const DICT: Record<string, Entry> = {
   'mode.government': { en: 'Government', zh: '政府' },
   'lang.name': { en: 'EN', zh: '繁' },
 
+  // ---- GovHK portal chrome (matches resident frontend) ----
+  'gov.brand.sub':     { en: 'Senior Housing Support · Officer Console',
+                         zh: '長者住屋支援 · 人員控制台' },
+  'gov.sitemap':       { en: 'Sitemap',      zh: '網站指南' },
+  'gov.contact':       { en: 'Contact Us',   zh: '聯絡我們' },
+  'gov.search.ph':     { en: 'Search',       zh: '搜尋' },
+  'gov.search.btn':    { en: 'Search',       zh: '搜尋' },
+  'gov.officer.chip':  { en: 'Government Officer', zh: '政府人員' },
+  'nav.home':          { en: 'Home',                  zh: '主頁' },
+  'nav.gov.officers':  { en: 'Government Officers',   zh: '政府人員' },
+  'nav.gov.console':   { en: 'Applications Console',  zh: '申請控制台' },
+
   'common.next': { en: 'Next', zh: '下一步' },
   'common.back': { en: 'Back', zh: '返回' },
   'common.loading': { en: 'Loading…', zh: '載入中…' },
@@ -173,4 +185,43 @@ export const DICT: Record<string, Entry> = {
 
   'pressure.title': { en: 'Where housing options matter most for older residents',
                       zh: '長者最需要房屋選項的地區' },
+
+  // ---- Detail page (replaces drawer) ----
+  'detail.back':       { en: 'Back to applications', zh: '返回申請列表' },
+  'detail.submittedOn':{ en: 'Submitted',           zh: '提交於' },
+  'detail.summary':    { en: 'Summary',             zh: '概覽' },
+  'detail.casefile':   { en: 'Case file',           zh: '個案檔案' },
+  'detail.profileMatch': { en: 'Profile & match',   zh: '個人條件及配對' },
+  'detail.docs':       { en: 'Documents',           zh: '文件' },
+  'detail.actions':    { en: 'Caseworker actions',  zh: '個案人員操作' },
+  'detail.noteSavedTo':{ en: 'Decision is recorded on the case file.',
+                         zh: '審批將記錄於個案檔案。' },
+  'detail.firstChoice':{ en: 'First choice',        zh: '首選' },
+
+  // ---- Timeline / case file ----
+  'tl.title':       { en: 'Case file timeline',   zh: '個案進度紀錄' },
+  'tl.intro':       { en: 'Every action on this case, in order. Add a note any time.',
+                      zh: '此個案的每項處理紀錄，按時間排列。可隨時新增備註。' },
+  'tl.empty':       { en: 'No activity yet.',     zh: '暫無紀錄。' },
+  'tl.add':         { en: 'Add to case file',     zh: '新增至個案檔案' },
+  'tl.compose.ph':  { en: 'Type a note, contact summary, visit log…',
+                      zh: '輸入備註、聯絡摘要或探訪紀錄…' },
+  'tl.save':        { en: 'Save to case file',    zh: '儲存至個案檔案' },
+  'tl.saving':      { en: 'Saving…',              zh: '儲存中…' },
+  'tl.kindShort':   { en: 'Type',                 zh: '類型' },
+
+  'tl.kind.note':     { en: 'Note',          zh: '備註' },
+  'tl.kind.contact':  { en: 'Contact',       zh: '聯絡' },
+  'tl.kind.visit':    { en: 'Home visit',    zh: '上門探訪' },
+  'tl.kind.followup': { en: 'Follow-up',     zh: '跟進' },
+  'tl.kind.document': { en: 'Document',      zh: '文件' },
+  'tl.kind.status':   { en: 'Status change', zh: '狀態更新' },
+  'tl.kind.system':   { en: 'System',        zh: '系統' },
+
+  'tl.justNow':    { en: 'just now',   zh: '剛剛' },
+  'tl.minAgo':     { en: 'min ago',    zh: '分鐘前' },
+  'tl.hourAgo':    { en: 'h ago',      zh: '小時前' },
+  'tl.dayAgo':     { en: 'd ago',      zh: '日前' },
+
+  'req.openCase':  { en: 'Open case',  zh: '開啟個案' },
 };
