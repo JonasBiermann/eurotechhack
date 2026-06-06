@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
 import {
-  api, type Application, type District, type Metric, type NewTown,
+  api, type Application, type Destination, type District, type Metric,
 } from '../api/client';
 import type { MapState } from '../map/MapCanvas';
 
@@ -20,7 +20,7 @@ export function GovernmentView({ view, setView }: {
   const [tab, setTab] = useState<'map' | 'requests'>('map');
   const [metric, setMetric] = useState<Metric>('age');
   const [districts, setDistricts] = useState<District[]>([]);
-  const [newTowns, setNewTowns] = useState<NewTown[]>([]);
+  const [gbaDests, setGbaDests] = useState<Destination[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
 
   const [drawer, setDrawer] = useState<Application | null>(null);
@@ -31,7 +31,7 @@ export function GovernmentView({ view, setView }: {
 
   useEffect(() => {
     api.districts().then(setDistricts).catch(() => {});
-    api.newTowns().then(setNewTowns).catch(() => {});
+    api.destinations().then(setGbaDests).catch(() => {});
     api.applications().then(setApps).catch(() => {});
   }, []);
 
@@ -40,11 +40,11 @@ export function GovernmentView({ view, setView }: {
       ...view,
       layer: 'heatmap',
       metric,
-      newTowns,
+      gbaPins: gbaDests,
       destinations: [], selectedDestId: null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metric, newTowns]);
+  }, [metric, gbaDests]);
 
   const refreshApps = async () => {
     const a = await api.applications();
@@ -52,12 +52,12 @@ export function GovernmentView({ view, setView }: {
   };
 
   const flyDistrict = (d: District) => setView({
-    ...view, layer: 'heatmap', metric, newTowns,
+    ...view, layer: 'heatmap', metric, gbaPins: gbaDests,
     focus: { center: d.center, zoom: 13.4 },
   });
-  const flyNewTown = (nt: NewTown) => setView({
-    ...view, layer: 'heatmap', metric, newTowns,
-    focus: { center: [nt.lng, nt.lat], zoom: 12.5 },
+  const flyDest = (d: Destination) => setView({
+    ...view, layer: 'heatmap', metric, gbaPins: gbaDests,
+    focus: { center: [d.lng, d.lat], zoom: 9.5 },
   });
 
   return (
@@ -104,22 +104,18 @@ export function GovernmentView({ view, setView }: {
               <Section title={t('sec.newtowns')}>
                 <p className="section-sub">{t('nt.intro')}</p>
                 <div className="nt-grid">
-                  {newTowns.map((nt) => {
-                    const pct = Math.min(100, Math.round((nt.available_units / nt.planned_units) * 100));
-                    return (
-                      <button key={nt.id} className="nt-card" onClick={() => flyNewTown(nt)}>
-                        <div className="nt-head">
-                          <b>{L(nt, 'name')}</b>
-                          <span className="nt-units">{nt.available_units.toLocaleString()}</span>
-                        </div>
-                        <div className="nt-bar"><div className="nt-bar-fill" style={{ width: `${pct}%` }} /></div>
-                        <div className="nt-meta">
-                          <span>{t('nt.available')}</span>
-                          <span>{t('nt.planned')} {nt.planned_units.toLocaleString()}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {gbaDests.map((d) => (
+                    <button key={d.id} className="nt-card" onClick={() => flyDest(d)}>
+                      <div className="nt-head">
+                        <b>{L(d, 'name')}</b>
+                        <span className="nt-units">{t('common.hkd')}{d.monthly_cost.toLocaleString()}</span>
+                      </div>
+                      <div className="nt-meta">
+                        <span>{t('d.cost')}</span>
+                        <span>{t('d.travel')} {d.travel_time_hr}{t('common.hours')}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </Section>
             </>
@@ -263,7 +259,8 @@ function DetailDrawer({ app, onClose, onDecided }: {
         <div className="drawer-body">
           <div className="kv"><span>{t('apps.origin')}</span><b>{app.origin_address || '–'}</b></div>
           <div className="kv"><span>{t('apps.topChoice')}</span><b>{top ? L(top, 'name') : '–'}</b></div>
-          <div className="kv"><span>{t('p.budget')}</span><b>{t('common.hkd')}{p.monthly_budget?.toLocaleString()}{t('common.perMonth')}</b></div>
+          <div className="kv"><span>{t('p.income')}</span><b>{t('common.hkd')}{p.monthly_income?.toLocaleString() ?? '–'}{t('common.perMonth')}</b></div>
+          <div className="kv"><span>{t('p.savings')}</span><b>{t('common.hkd')}{p.savings?.toLocaleString() ?? '–'}</b></div>
           <div className="kv"><span>{t('p.stepFree')}</span><b>{p.needs_step_free ? '✓' : '–'}</b></div>
           <div className="kv"><span>{t('p.careLevel')}</span><b>{t(`care.${p.care_level ?? 0}`)}</b></div>
 

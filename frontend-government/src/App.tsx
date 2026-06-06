@@ -6,7 +6,7 @@ import { GovernmentView } from './views/GovernmentView';
 const DEFAULT_VIEW: MapState = {
   layer: 'heatmap', metric: 'age', origin: null, footprintsBbox: null,
   destinations: [], selectedDestId: null, focus: null,
-  newTowns: [],
+  gbaPins: [],
 };
 
 export default function App() {

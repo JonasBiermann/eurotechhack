@@ -10,13 +10,38 @@ export interface Factor {
   key: string; label_en: string; label_tc: string;
   weight: number; value: number; contribution: number;
 }
-export interface MatchResult { score: number; factors: Factor[]; }
+export interface MatchResult { score: number; factors: Factor[]; subscores?: Record<string, number>; }
+
+export type Provenance = 'real' | 'hardcoded' | 'modeled';
+export type LedgerStatus = 'kept' | 'gained' | 'lost' | 'at_risk' | 'reduced';
+/** One row of the transparency ledger: what the senior keeps / gains / loses / risks. */
+export interface LedgerEntry {
+  name: string; status: LedgerStatus; monthly_value_hkd: number | null;
+  condition: string; detail: string; source: string; provenance: Provenance;
+}
 
 export interface Destination {
   id: string; name_en: string; name_tc: string; blurb_en: string; blurb_tc: string;
-  lat: number; lng: number; monthly_cost: number; step_free_housing: number;
-  care_capacity: number; healthcare_score: number; livability: number;
-  hk_community: number; travel_time_hr: number; match?: MatchResult;
+  lat: number; lng: number;
+  // compatibility fields (still returned by the backend)
+  monthly_cost: number; travel_time_hr: number;
+  // GBA seed fields (modeled / hardcoded)
+  rent_monthly_hkd?: number; col_monthly_hkd?: number; care_home_private_hkd?: number;
+  ehcv_institution?: string; ehcv_points?: number; gdrcs_available?: boolean;
+  cantonese_env?: number; step_free_housing?: number; air_quality?: number;
+  green_space?: number; amenity_density?: number;
+  border_travel_hr?: number; border_oneway_hkd?: number; control_point?: string;
+  // projections (the honest demo headline numbers)
+  gross_savings_hkd?: number; lost_benefit_value_hkd?: number; net_savings_hkd?: number;
+  monthly_savings_hkd?: number; pct_income_freed?: number;
+  runway_years?: number | null; savings_sustainable?: boolean;
+  time_to_care_hk_weeks?: number; time_to_care_gba_weeks?: number; serious_care_note?: string;
+  return_trips_per_year?: number; return_burden_hkd?: number; return_burden_hours?: number;
+  projected_wellbeing?: number;
+  // transparency
+  benefits_ledger?: LedgerEntry[]; warnings?: string[];
+  persona?: string; data_provenance?: Record<string, Provenance>;
+  match?: MatchResult;
 }
 
 export interface BdRecord {
@@ -30,11 +55,18 @@ export interface BdRecord {
 }
 
 export interface Profile {
+  // finances
   monthly_income?: number; savings?: number; monthly_budget?: number;
-  needs_step_free?: boolean; mobility_level?: number;
-  care_level?: number; needs_clinic_nearby?: boolean;
-  pref_near_family?: number; pref_green_space?: number;
-  pref_community?: number; pref_quiet?: number;
+  oaa_oala_monthly?: number; cssa_monthly?: number;
+  has_hk_public_housing?: boolean; wants_keep_public_housing?: boolean; is_chinese_pr?: boolean;
+  // health / care
+  chronic_conditions?: number; chronic_specialty?: string;
+  care_level?: number; needs_residential_care?: boolean;
+  mobility_level?: number; needs_step_free?: boolean; needs_clinic_nearby?: boolean;
+  // continuity / preferences
+  family_in_hk?: number; pref_near_family?: number; pref_cantonese?: number;
+  pref_green_space?: number; pref_community?: number; pref_quiet?: number;
+  persona?: string;
 }
 
 export interface DocMeta {
@@ -102,7 +134,8 @@ export const api = {
   myApplications: () => jget<Application[]>('/api/applications/mine'),
   districts: () => jget<District[]>('/api/districts'),
   destinations: () => jget<Destination[]>('/api/destinations'),
-  rank: (profile: Profile) => jpost<Destination[]>('/api/destinations/rank', profile),
+  rank: (profile: Profile, persona?: string) =>
+    jpost<Destination[]>(`/api/destinations/rank${persona ? `?persona=${encodeURIComponent(persona)}` : ''}`, profile),
   search: (q: string) => jget<BdRecord[]>(`/api/buildings/search?q=${encodeURIComponent(q)}&limit=12`),
   building: (id: number) => jget<BdRecord>(`/api/buildings/${id}`),
   heatmap: (metric: Metric) => jget<FeatureCollection>(`/api/heatmap?metric=${metric}`),

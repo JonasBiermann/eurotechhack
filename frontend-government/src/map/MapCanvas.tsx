@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { api, type Destination, type Metric, type NewTown } from '../api/client';
+import { api, type Destination, type Metric } from '../api/client';
 import type { Lang } from '../i18n/dict';
 
 export interface MapState {
@@ -12,8 +12,8 @@ export interface MapState {
   destinations: Destination[];
   selectedDestId: string | null;
   focus: { center: [number, number]; zoom: number } | null;
-  // gov console: persistent senior-housing inventory
-  newTowns?: NewTown[];
+  // gov console: persistent GBA destination inventory (always-on informational pins)
+  gbaPins?: Destination[];
 }
 
 const STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
@@ -69,39 +69,38 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
     if (m.getSource(id)) m.removeSource(id);
   }
 
-  function applyNewTowns(towns: NewTown[]) {
+  function applyGbaPins(pins: Destination[]) {
     const m = map.current!;
     const fc: any = {
       type: 'FeatureCollection',
-      features: towns.map((t) => ({
+      features: pins.map((d) => ({
         type: 'Feature',
-        geometry: { type: 'Point', coordinates: [t.lng, t.lat] },
+        geometry: { type: 'Point', coordinates: [d.lng, d.lat] },
         properties: {
-          id: t.id,
-          name: lang === 'en' ? t.name_en : t.name_tc,
-          units: t.available_units,
+          id: d.id,
+          name: lang === 'en' ? d.name_en : d.name_tc,
         },
       })),
     };
-    if (m.getSource('nt')) (m.getSource('nt') as any).setData(fc);
-    else m.addSource('nt', { type: 'geojson', data: fc });
-    if (!m.getLayer('nt-ring')) {
-      m.addLayer({ type: 'circle', id: 'nt-ring', source: 'nt',
+    if (m.getSource('gba')) (m.getSource('gba') as any).setData(fc);
+    else m.addSource('gba', { type: 'geojson', data: fc });
+    if (!m.getLayer('gba-ring')) {
+      m.addLayer({ type: 'circle', id: 'gba-ring', source: 'gba',
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['get', 'units'], 0, 8, 6000, 30],
+          'circle-radius': 16,
           'circle-color': '#0f8a6a', 'circle-opacity': 0.14,
           'circle-stroke-color': '#0f8a6a', 'circle-stroke-width': 1.8, 'circle-stroke-opacity': 0.7,
         } });
-      m.addLayer({ type: 'circle', id: 'nt-dot', source: 'nt',
+      m.addLayer({ type: 'circle', id: 'gba-dot', source: 'gba',
         paint: { 'circle-radius': 5, 'circle-color': '#0f8a6a', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
-      m.addLayer({ type: 'symbol', id: 'nt-label', source: 'nt',
+      m.addLayer({ type: 'symbol', id: 'gba-label', source: 'gba',
         layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-offset': [0, 1.6],
           'text-anchor': 'top', 'text-font': ['Open Sans Bold'] },
         paint: { 'text-color': '#0a4d3a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 } });
     }
   }
-  function clearNewTowns() {
-    removeLayer('nt-ring'); removeLayer('nt-dot'); removeLayer('nt-label'); removeSource('nt');
+  function clearGbaPins() {
+    removeLayer('gba-ring'); removeLayer('gba-dot'); removeLayer('gba-label'); removeSource('gba');
   }
 
   async function apply() {
@@ -160,9 +159,9 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
       removeLayer('dest-halo'); removeLayer('dest-pt'); removeLayer('dest-label'); removeSource('dests');
     }
 
-    // ---- HK new-town senior-housing inventory (always-on informational layer) ----
-    if (view.newTowns && view.newTowns.length) applyNewTowns(view.newTowns);
-    else clearNewTowns();
+    // ---- GBA destination inventory (always-on informational layer) ----
+    if (view.gbaPins && view.gbaPins.length) applyGbaPins(view.gbaPins);
+    else clearGbaPins();
 
     // ---- footprints (resident building context) ----
     if (view.footprintsBbox) {

@@ -143,18 +143,18 @@ export const DICT: Record<string, Entry> = {
                   zh: '此申請完全自願，由居民主動提出。' },
 
   // ---- Government console ----
-  'app.subtitle': { en: 'Senior support · Northern Metropolis housing options',
-                    zh: '長者支援 · 北部都會區房屋選項' },
+  'app.subtitle': { en: 'Senior support · Greater Bay Area relocation',
+                    zh: '長者支援 · 大灣區遷居' },
 
   'tab.map':      { en: 'Map',          zh: '地圖' },
   'tab.requests': { en: 'Applications', zh: '申請' },
 
   'sec.pressure': { en: 'Care pressure map',           zh: '照護壓力地圖' },
-  'sec.newtowns': { en: 'Senior housing options',      zh: '長者房屋選項' },
+  'sec.newtowns': { en: 'Greater Bay Area destinations', zh: '大灣區目的地' },
   'sec.requests': { en: 'Resident applications',       zh: '居民申請' },
 
-  'nt.intro':     { en: 'Senior-friendly homes being built in HK new towns. Residents may apply to any of these if they choose.',
-                    zh: '香港新市鎮正在建設的長者友善住屋。居民可自行申請。' },
+  'nt.intro':     { en: 'Greater Bay Area cities residents can voluntarily relocate to, keeping their HK entitlements.',
+                    zh: '居民可自願遷往的大灣區城市，並保留香港福利待遇。' },
   'nt.available': { en: 'available', zh: '可供申請' },
   'nt.planned':   { en: 'planned',   zh: '規劃中' },
 
