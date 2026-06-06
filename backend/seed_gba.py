@@ -1,0 +1,91 @@
+"""Seed the candidate destination cities (Greater Bay Area).
+
+The two HK datasets cover only Hong Kong, so cross-border destination attributes
+are SEEDED / ILLUSTRATIVE (clearly labelled as such in the UI). Each attribute is
+on a 0..1 scale except monthly_cost (HKD-equiv) and travel_time_hr.
+
+Values are chosen so the ranking visibly reacts to the resident profile:
+  - low budget          -> Huizhou / Jiangmen / Zhongshan rise (cheap)
+  - high care need      -> Guangzhou / Shenzhen rise (top hospitals)
+  - closeness to family -> Shenzhen / Dongguan rise (nearest)
+"""
+import json
+import config
+
+DESTINATIONS = [
+    {
+        "id": "shenzhen", "name_en": "Shenzhen", "name_tc": "深圳",
+        "blurb_en": "Right across the border; top hospitals (incl. HKU-SZH) and the largest HK community.",
+        "blurb_tc": "一河之隔；醫療頂尖（包括港大深圳醫院），香港社群最大。",
+        "lat": 22.5431, "lng": 114.0579,
+        "monthly_cost": 9000, "step_free_housing": 0.92, "care_capacity": 0.60,
+        "healthcare_score": 0.88, "livability": 0.62, "hk_community": 0.85, "travel_time_hr": 0.5,
+    },
+    {
+        "id": "zhongshan", "name_en": "Zhongshan", "name_tc": "中山",
+        "blurb_en": "A long-standing HK retirement choice — affordable, green, HK-affiliated care homes.",
+        "blurb_tc": "香港長者熱門退休地：消費實惠、綠化好，設有港資安老院。",
+        "lat": 22.5170, "lng": 113.3926,
+        "monthly_cost": 4500, "step_free_housing": 0.85, "care_capacity": 0.85,
+        "healthcare_score": 0.70, "livability": 0.80, "hk_community": 0.80, "travel_time_hr": 1.5,
+    },
+    {
+        "id": "zhuhai", "name_en": "Zhuhai", "name_tc": "珠海",
+        "blurb_en": "Coastal and relaxed, next to Macau; reached via the HK-Zhuhai-Macau Bridge.",
+        "blurb_tc": "沿海悠閒，毗鄰澳門；經港珠澳大橋直達。",
+        "lat": 22.2710, "lng": 113.5767,
+        "monthly_cost": 6000, "step_free_housing": 0.88, "care_capacity": 0.70,
+        "healthcare_score": 0.72, "livability": 0.85, "hk_community": 0.60, "travel_time_hr": 1.5,
+    },
+    {
+        "id": "guangzhou", "name_en": "Guangzhou", "name_tc": "廣州",
+        "blurb_en": "Provincial capital with the region's best hospitals; bigger-city amenities.",
+        "blurb_tc": "省會城市，醫療資源最佳；大城市配套齊全。",
+        "lat": 23.1291, "lng": 113.2644,
+        "monthly_cost": 8000, "step_free_housing": 0.90, "care_capacity": 0.75,
+        "healthcare_score": 0.92, "livability": 0.60, "hk_community": 0.65, "travel_time_hr": 1.75,
+    },
+    {
+        "id": "foshan", "name_en": "Foshan", "name_tc": "佛山",
+        "blurb_en": "Affordable and next to Guangzhou, with strong Cantonese heritage.",
+        "blurb_tc": "消費實惠，緊鄰廣州，嶺南粵文化濃厚。",
+        "lat": 23.0218, "lng": 113.1219,
+        "monthly_cost": 5000, "step_free_housing": 0.86, "care_capacity": 0.65,
+        "healthcare_score": 0.78, "livability": 0.68, "hk_community": 0.55, "travel_time_hr": 1.75,
+    },
+    {
+        "id": "dongguan", "name_en": "Dongguan", "name_tc": "東莞",
+        "blurb_en": "Close to the border and budget-friendly; quick to reach for visiting family.",
+        "blurb_tc": "鄰近邊境、消費相宜；家人探訪往返便捷。",
+        "lat": 23.0207, "lng": 113.7518,
+        "monthly_cost": 5500, "step_free_housing": 0.82, "care_capacity": 0.60,
+        "healthcare_score": 0.72, "livability": 0.58, "hk_community": 0.60, "travel_time_hr": 1.0,
+    },
+    {
+        "id": "jiangmen", "name_en": "Jiangmen", "name_tc": "江門",
+        "blurb_en": "Ancestral home of many HK families — relaxed, very affordable, strong community ties.",
+        "blurb_tc": "不少香港人的祖籍地：節奏悠閒、消費極實惠、鄉里情濃。",
+        "lat": 22.5787, "lng": 113.0815,
+        "monthly_cost": 3800, "step_free_housing": 0.80, "care_capacity": 0.78,
+        "healthcare_score": 0.68, "livability": 0.82, "hk_community": 0.90, "travel_time_hr": 2.0,
+    },
+    {
+        "id": "huizhou", "name_en": "Huizhou", "name_tc": "惠州",
+        "blurb_en": "Lakes, hills and sea air at the lowest cost — popular with HK retirees buying flats.",
+        "blurb_tc": "湖光山色、海風宜人，消費最低；港人置業退休熱點。",
+        "lat": 23.1116, "lng": 114.4161,
+        "monthly_cost": 3500, "step_free_housing": 0.83, "care_capacity": 0.62,
+        "healthcare_score": 0.66, "livability": 0.86, "hk_community": 0.70, "travel_time_hr": 1.5,
+    },
+]
+
+
+def main() -> None:
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(config.DESTINATIONS_JSON, "w", encoding="utf-8") as f:
+        json.dump(DESTINATIONS, f, ensure_ascii=False, indent=2)
+    print(f"Wrote {len(DESTINATIONS)} GBA destinations -> {config.DESTINATIONS_JSON}")
+
+
+if __name__ == "__main__":
+    main()

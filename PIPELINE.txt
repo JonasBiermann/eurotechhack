@@ -1,0 +1,89 @@
+SILVERLINK — RELOCATION PLATFORM, IMPLEMENTATION PIPELINE
+=========================================================
+Stack: Python/FastAPI backend, React frontend, SQLite + local geojson.
+Demo target: live, seeded with ~3 districts and a synthetic elderly cohort.
+Core objective the whole system minimises: TIME-TO-CARE (months until a
+resident is actually receiving care), not "placement made".
+
+
+GOAL
+----
+Voluntary, opt-in relocation of elderly residents to higher-capacity areas,
+where (1) matches preserve the resident's social graph, (2) the simulation
+optimises the whole system at once — relocation + freed-unit cascade +
+waitlist relief — and (3) destinations are scored on real urban data, not
+just "has a hospital".
+
+
+STAGE 1 — POPULATION INTELLIGENCE  (data + map)
+-----------------------------------------------
+1. Ingest open data (data.gov.hk / CSDI): elderly density by district,
+   care-bed waitlists, housing-stock age/occupancy, destination capacity.
+2. Compute an URBAN LIVABILITY SCORE per destination zone from physical
+   city data: step-free walk time to nearest clinic, real transit journey
+   time to a hospital, heat exposure, air quality, green-space proximity.
+   -> this is the smart-city input; it feeds Stage 2 matching directly.
+3. Output: heatmap of care pressure (origin) + livability-ranked opportunity
+   zones (destination). Read-only; framed as "where relocation helps most",
+   never a target list.
+
+
+STAGE 2 — COMMUNITY-GRAPH MATCHING  (the core innovation)
+---------------------------------------------------------
+1. Build a social graph of residents: nodes = residents, edges = shared
+   building / temple / community-centre / daily-activity ties.
+2. Run community detection (Louvain / connected-components) to find clusters.
+3. Match CLUSTERS, not individuals, to destination zones — preserving the
+   subgraph. Per-resident constraints layered on top: medical proximity,
+   mobility (step-free, lift, low floor), preferences (nature/temple).
+   Destination fit weighted by the Stage-1 livability score.
+4. Output per cluster: ranked relocation OPTIONS (offered, not assigned),
+   each with a "social-graph intact %" and projected time-to-care.
+
+
+STAGE 3 — RELOCATION LOGISTICS  (opt-in workflow)
+-------------------------------------------------
+1. Resident-initiated application portal (their application — opt-in).
+2. Document handling + move coordination, status per application.
+3. New-neighbourhood integration support (services in destination zone).
+4. Two dashboards over the same data: FAMILY view + government view.
+
+
+STAGE 4 — SYSTEMIC IMPACT SIMULATION  (digital twin, the showstopper)
+---------------------------------------------------------------------
+1. Lightweight digital twin of HK on a 2D map (seeded cohort).
+2. Simulate a cluster's voluntary move and solve the system as ONE objective:
+   relocation -> freed units -> waitlist shortens for residents still queued.
+3. Headline metrics (the numbers on screen):
+     - care-wait drops from years -> weeks for the moved cohort
+     - lower monthly cost, better healthcare access
+     - communities kept together (social-graph intact %)
+     - SECONDARY: shorter waitlist for seniors still in HK (the freed-capacity
+       cascade — a benefit to other seniors, not "real estate reclaimed")
+4. Watch the care network rebalance live as the cohort moves.
+
+
+BUILD ORDER (hackathon)
+-----------------------
+1. Stage 1 data ingest + livability score, printed/JSON first (no UI).
+2. Stage 2 graph + matching on the seeded cohort -> JSON options.
+3. React map rendering Stage 1 + Stage 2 output (end-to-end visible).
+4. Stage 4 simulation/animation on top of the same data (the demo win).
+5. Stage 3 portal last — thin, just enough to show the opt-in loop.
+Pre-seed everything; do NOT rely on live data pulls on stage.
+
+
+OUT OF SCOPE
+------------
+Real auth, real document processing, cloud deploy, native mobile, any
+involuntary/auto-assignment path. Resident is a willing participant at
+every stage — that constraint is load-bearing, not cosmetic.
+
+
+OPEN QUESTIONS (team)
+---------------------
+- GBA cross-border vs within-HK (Northern Metropolis) destinations — which
+  for the demo? (Affects livability data source + the "pull" story.)
+- Edge weighting in the social graph — are all tie types equal?
+- Do we model reversal risk (health decline -> move-back) as a flag, or skip
+  for time?

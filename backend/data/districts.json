@@ -1,0 +1,59 @@
+[
+  {
+    "id": "ssp",
+    "name_en": "Sham Shui Po",
+    "name_tc": "深水埗",
+    "center": [
+      114.16300000000001,
+      22.3325
+    ],
+    "bbox": [
+      114.152,
+      22.322,
+      114.174,
+      22.343
+    ],
+    "count": 2996,
+    "mean_age": 48.0,
+    "oldest_age": 79,
+    "pct_no_lift": 39.2
+  },
+  {
+    "id": "kt",
+    "name_en": "Kwun Tong",
+    "name_tc": "觀塘",
+    "center": [
+      114.23,
+      22.311500000000002
+    ],
+    "bbox": [
+      114.218,
+      22.3,
+      114.242,
+      22.323
+    ],
+    "count": 811,
+    "mean_age": 41.9,
+    "oldest_age": 67,
+    "pct_no_lift": 21.5
+  },
+  {
+    "id": "wc",
+    "name_en": "Wan Chai",
+    "name_tc": "灣仔",
+    "center": [
+      114.1785,
+      22.277
+    ],
+    "bbox": [
+      114.167,
+      22.268,
+      114.19,
+      22.286
+    ],
+    "count": 2272,
+    "mean_age": 44.2,
+    "oldest_age": 78,
+    "pct_no_lift": 28.9
+  }
+]
