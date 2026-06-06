@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
-import { api, type Application, type District, type Destination, type Metric } from '../api/client';
+import {
+  api, type Application, type District, type Metric, type NewTown,
+} from '../api/client';
 import type { MapState } from '../map/MapCanvas';
-import { ScoreDial, FactorBars } from '../components/MatchScore';
 
 const METRICS: Metric[] = ['age', 'density', 'nolift'];
 const GRADIENT: Record<Metric, string> = {
@@ -11,190 +12,296 @@ const GRADIENT: Record<Metric, string> = {
   nolift: 'linear-gradient(90deg,#0ea5a4,#fbbf24,#f97316,#ef4444)',
 };
 
-export function GovernmentView({ setView }: { setView: (v: MapState) => void }) {
+export function GovernmentView({ view, setView }: {
+  view: MapState;
+  setView: (v: MapState) => void;
+}) {
   const { t, L } = useI18n();
-  const [tab, setTab] = useState<'heatmap' | 'apps'>('heatmap');
+  const [tab, setTab] = useState<'map' | 'requests'>('map');
   const [metric, setMetric] = useState<Metric>('age');
   const [districts, setDistricts] = useState<District[]>([]);
-  const [dests, setDests] = useState<Destination[]>([]);
+  const [newTowns, setNewTowns] = useState<NewTown[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
-  const [sel, setSel] = useState<Application | null>(null);
+
+  const [drawer, setDrawer] = useState<Application | null>(null);
+
+  const pendingCount = apps.filter(
+    (a) => a.status === 'submitted' || a.status === 'under_review',
+  ).length;
 
   useEffect(() => {
     api.districts().then(setDistricts).catch(() => {});
-    api.destinations().then(setDests).catch(() => {});
+    api.newTowns().then(setNewTowns).catch(() => {});
+    api.applications().then(setApps).catch(() => {});
   }, []);
 
-  const refreshApps = () => api.applications().then(setApps).catch(() => {});
-  useEffect(() => { if (tab === 'apps') refreshApps(); }, [tab]);
-
-  // drive the map
   useEffect(() => {
-    if (tab === 'heatmap') {
-      setView({ layer: 'heatmap', metric, origin: null, footprintsBbox: null,
-        destinations: [], selectedDestId: null, focus: null });
-    } else {
-      const top = sel?.top_destination;
-      setView({ layer: 'destinations', metric, origin: null, footprintsBbox: null,
-        destinations: dests, selectedDestId: top?.id ?? null,
-        focus: top ? { center: [top.lng, top.lat], zoom: 7 } : null });
-    }
-  }, [tab, metric, sel, dests, setView]);
+    setView({
+      ...view,
+      layer: 'heatmap',
+      metric,
+      newTowns,
+      destinations: [], selectedDestId: null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metric, newTowns]);
+
+  const refreshApps = async () => {
+    const a = await api.applications();
+    setApps(a);
+  };
+
+  const flyDistrict = (d: District) => setView({
+    ...view, layer: 'heatmap', metric, newTowns,
+    focus: { center: d.center, zoom: 13.4 },
+  });
+  const flyNewTown = (nt: NewTown) => setView({
+    ...view, layer: 'heatmap', metric, newTowns,
+    focus: { center: [nt.lng, nt.lat], zoom: 12.5 },
+  });
 
   return (
-    <div className="panel panel-left panel-wide">
-      <div className="panel-head">
-        <div className="seg violet" style={{ marginBottom: 14 }}>
-          <button className={tab === 'heatmap' ? 'active' : ''} onClick={() => { setTab('heatmap'); setSel(null); }}>
-            {t('gov.tab.heatmap')}</button>
-          <button className={tab === 'apps' ? 'active' : ''} onClick={() => setTab('apps')}>
-            {t('gov.tab.apps')}</button>
+    <>
+      <div className="panel panel-left panel-console">
+        <div className="console-tabs">
+          <button className={`console-tab ${tab === 'map' ? 'active' : ''}`}
+            onClick={() => setTab('map')}>
+            {t('tab.map')}
+          </button>
+          <button className={`console-tab ${tab === 'requests' ? 'active' : ''}`}
+            onClick={() => setTab('requests')}>
+            {t('tab.requests')}
+            {pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
+          </button>
+        </div>
+
+        <div className="panel-body console-body">
+          {tab === 'map' ? (
+            <>
+              <Section title={t('sec.pressure')}>
+                <p className="section-sub">{t('pressure.title')}</p>
+                <div className="seg" style={{ width: '100%' }}>
+                  {METRICS.map((m) => (
+                    <button key={m} className={metric === m ? 'active' : ''} style={{ flex: 1 }}
+                      onClick={() => setMetric(m)}>{t(`metric.${m}`)}</button>
+                  ))}
+                </div>
+                <div className="legend">
+                  <div className="unit">{t(`metric.${metric}.unit`)}</div>
+                  <div className="bar" style={{ background: GRADIENT[metric] }} />
+                  <div className="ends"><span>{t('gov.legend.low')}</span><span>{t('gov.legend.high')}</span></div>
+                </div>
+                <div className="district-strip">
+                  {districts.map((d) => (
+                    <button key={d.id} className="dchip" onClick={() => flyDistrict(d)}>
+                      <b>{L(d, 'name')}</b>
+                      <span>{d.pct_no_lift ?? '–'}% {t('stat.noLift')}</span>
+                    </button>
+                  ))}
+                </div>
+              </Section>
+
+              <Section title={t('sec.newtowns')}>
+                <p className="section-sub">{t('nt.intro')}</p>
+                <div className="nt-grid">
+                  {newTowns.map((nt) => {
+                    const pct = Math.min(100, Math.round((nt.available_units / nt.planned_units) * 100));
+                    return (
+                      <button key={nt.id} className="nt-card" onClick={() => flyNewTown(nt)}>
+                        <div className="nt-head">
+                          <b>{L(nt, 'name')}</b>
+                          <span className="nt-units">{nt.available_units.toLocaleString()}</span>
+                        </div>
+                        <div className="nt-bar"><div className="nt-bar-fill" style={{ width: `${pct}%` }} /></div>
+                        <div className="nt-meta">
+                          <span>{t('nt.available')}</span>
+                          <span>{t('nt.planned')} {nt.planned_units.toLocaleString()}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Section>
+            </>
+          ) : (
+            <Section title={t('sec.requests')}>
+              <p className="section-sub">{t('req.intro')}</p>
+              <RequestsList apps={apps} onPick={setDrawer} selectedId={drawer?.id ?? null} />
+            </Section>
+          )}
         </div>
       </div>
 
-      {tab === 'heatmap'
-        ? <HeatmapTab metric={metric} setMetric={setMetric} districts={districts}
-            flyTo={(d) => setView({ layer: 'heatmap', metric, origin: null, footprintsBbox: null,
-              destinations: [], selectedDestId: null, focus: { center: d.center, zoom: 14 } })} />
-        : sel
-          ? <Detail app={sel} onBack={() => setSel(null)}
-              onDecided={async () => { await refreshApps(); const fresh = await api.application(sel.id); setSel(fresh); }} />
-          : <Queue apps={apps} onPick={setSel} />}
+      {drawer && <DetailDrawer app={drawer} onClose={() => setDrawer(null)}
+        onDecided={async () => {
+          await refreshApps();
+          const fresh = await api.application(drawer.id);
+          setDrawer(fresh);
+        }} />}
+    </>
+  );
+}
+
+// ============================================================== sub-components
+
+function Section({ title, children }: { title: string; children: any }) {
+  return (
+    <div className="console-section">
+      <div className="console-section-head">{title}</div>
+      <div className="console-section-body">{children}</div>
     </div>
   );
 }
 
-function HeatmapTab({ metric, setMetric, districts, flyTo }: {
-  metric: Metric; setMetric: (m: Metric) => void; districts: District[]; flyTo: (d: District) => void;
+type ReqFilter = 'all' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+
+function RequestsList({ apps, onPick, selectedId }: {
+  apps: Application[]; onPick: (a: Application) => void; selectedId: number | null;
 }) {
-  const { t, L } = useI18n();
-  return (
-    <div className="panel-body" style={{ paddingTop: 0 }}>
-      <h2 style={{ fontSize: 19 }}>{t('gov.heatmap.title')}</h2>
-      <p style={{ color: 'var(--muted)', fontSize: 13.5, margin: '6px 0 16px', lineHeight: 1.5 }}>
-        {t('gov.heatmap.sub')}</p>
+  const { t, lang } = useI18n();
+  const [filter, setFilter] = useState<ReqFilter>('all');
 
-      <div className="seg" style={{ width: '100%' }}>
-        {METRICS.map((m) => (
-          <button key={m} className={metric === m ? 'active' : ''} style={{ flex: 1 }}
-            onClick={() => setMetric(m)}>{t(`metric.${m}`)}</button>
-        ))}
-      </div>
+  const counts = useMemo(() => ({
+    all: apps.length,
+    submitted: apps.filter((a) => a.status === 'submitted').length,
+    under_review: apps.filter((a) => a.status === 'under_review').length,
+    approved: apps.filter((a) => a.status === 'approved').length,
+    rejected: apps.filter((a) => a.status === 'rejected').length,
+  }), [apps]);
 
-      <div className="legend">
-        <div className="unit">{t(`metric.${metric}.unit`)}</div>
-        <div className="bar" style={{ background: GRADIENT[metric] }} />
-        <div className="ends"><span>{t('gov.legend.low')}</span><span>{t('gov.legend.high')}</span></div>
-      </div>
-
-      <div className="group-title" style={{ marginTop: 22 }}>{t('gov.districts')}</div>
-      {districts.map((d) => (
-        <button key={d.id} className="dstat" style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-          onClick={() => flyTo(d)}>
-          <div className="row1">
-            <h4>{L(d, 'name')}</h4>
-            <span className="pct" style={{ color: 'var(--gold)' }}>{d.pct_no_lift ?? '–'}%</span>
-          </div>
-          <div className="row2">
-            <span>{d.count} {t('stat.buildings')}</span>
-            <span>{t('stat.meanAge')} <b>{d.mean_age}</b></span>
-            <span>{t('stat.oldest')} <b>{d.oldest_age}</b></span>
-            <span>{t('stat.noLift')}</span>
-          </div>
-        </button>
-      ))}
-    </div>
+  const filtered = useMemo(
+    () => filter === 'all' ? apps : apps.filter((a) => a.status === filter),
+    [apps, filter],
   );
-}
 
-function Queue({ apps, onPick }: { apps: Application[]; onPick: (a: Application) => void }) {
-  const { t, L } = useI18n();
-  const pending = apps.filter((a) => a.status === 'submitted' || a.status === 'under_review').length;
-  const approved = apps.filter((a) => a.status === 'approved').length;
+  const FILTERS: { key: ReqFilter; label: string; tone: string }[] = [
+    { key: 'all',          label: t('req.all'),      tone: 'neutral' },
+    { key: 'submitted',    label: t('req.new'),      tone: 'info' },
+    { key: 'under_review', label: t('req.review'),   tone: 'gold' },
+    { key: 'approved',     label: t('req.approved'), tone: 'success' },
+    { key: 'rejected',     label: t('req.closed'),   tone: 'danger' },
+  ];
+
   return (
-    <div className="panel-body" style={{ paddingTop: 0 }}>
-      <h2 style={{ fontSize: 19, marginBottom: 14 }}>{t('apps.title')}</h2>
-      <div className="kpis">
-        <div className="kpi"><b>{apps.length}</b><small>{t('apps.title')}</small></div>
-        <div className="kpi"><b style={{ color: 'var(--gold)' }}>{pending}</b><small>{t('status.under_review')}</small></div>
-        <div className="kpi"><b style={{ color: 'var(--success)' }}>{approved}</b><small>{t('status.approved')}</small></div>
-      </div>
-      {apps.length === 0 && <div className="center-msg">{t('apps.empty')}</div>}
-      <div className="queue">
-        {apps.map((a) => (
-          <button key={a.id} className="qrow" onClick={() => onPick(a)}>
-            <div className="top">
-              <b>{a.applicant_name || `#${a.id}`}</b>
-              <span className={`badge badge-${a.status}`}>{t(`status.${a.status}`)}</span>
-            </div>
-            <div className="sub">
-              → {a.top_destination ? L(a.top_destination, 'name') : '–'}
-              {a.top_destination?.match && ` · ${Math.round(a.top_destination.match.score)}/100`}
-              {` · ${a.documents.length} ${t('apps.docs')}`}
-            </div>
+    <>
+      <div className="req-filters">
+        {FILTERS.map((f) => (
+          <button key={f.key}
+            className={`req-filter tone-${f.tone} ${filter === f.key ? 'on' : ''}`}
+            onClick={() => setFilter(f.key)}>
+            <span>{f.label}</span>
+            <b>{counts[f.key]}</b>
           </button>
         ))}
       </div>
-    </div>
+
+      {filtered.length === 0 && <div className="center-msg">{t('req.empty')}</div>}
+
+      <div className="req-list">
+        {filtered.map((a) => {
+          const top = a.top_destination;
+          const score = top?.match ? Math.round(top.match.score) : null;
+          const days = Math.max(0, Math.floor(
+            (Date.now() - new Date(a.created_at).getTime()) / 86_400_000,
+          ));
+          const ageLabel = days === 0 ? t('req.today') : `${days}${t('req.daysAgo')}`;
+          const dest = top ? (lang === 'en' ? top.name_en : top.name_tc) : '–';
+          return (
+            <button key={a.id}
+              className={`req-row ${selectedId === a.id ? 'sel' : ''}`}
+              onClick={() => onPick(a)}>
+              <div className="req-row-top">
+                <b>{a.applicant_name || `#${a.id}`}</b>
+                <span className={`badge badge-${a.status}`}>{t(`status.${a.status}`)}</span>
+              </div>
+              <div className="req-row-flow">
+                <span className="req-from">{a.origin_address || '–'}</span>
+                <span className="req-arrow">→</span>
+                <span className="req-to">{dest}</span>
+              </div>
+              <div className="req-row-meta">
+                {score !== null && (
+                  <span className={`req-score ${score >= 75 ? 'hi' : score >= 60 ? 'mid' : 'lo'}`}>
+                    {score} <small>{t('req.match')}</small>
+                  </span>
+                )}
+                <span className="req-meta-item">{t(`care.${a.profile.care_level ?? 0}`)}</span>
+                {a.documents.length > 0 && (
+                  <span className="req-meta-item">📎 {a.documents.length} {t('req.docs')}</span>
+                )}
+                <span className="req-meta-item req-age">{ageLabel}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
-function Detail({ app, onBack, onDecided }: {
-  app: Application; onBack: () => void; onDecided: () => void;
+function DetailDrawer({ app, onClose, onDecided }: {
+  app: Application; onClose: () => void; onDecided: () => void;
 }) {
   const { t, L, lang } = useI18n();
   const [note, setNote] = useState(app.note ?? '');
   const [saving, setSaving] = useState(false);
   const top = app.top_destination;
-
   const decide = async (decision: string) => {
     setSaving(true);
     try { await api.decide(app.id, decision, note); await onDecided(); }
     finally { setSaving(false); }
   };
-
   const p = app.profile;
   return (
-    <div className="panel-body" style={{ paddingTop: 0 }}>
-      <button className="drawer-back" onClick={onBack}>← {t('apps.title')}</button>
-      <div className="row1" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 20 }}>{app.applicant_name || `#${app.id}`}</h2>
-        <span className={`badge badge-${app.status}`}>{t(`status.${app.status}`)}</span>
-      </div>
+    <div className="drawer-backdrop" onClick={onClose}>
+      <div className="drawer" onClick={(e) => e.stopPropagation()}>
+        <div className="drawer-head">
+          <h2>{app.applicant_name || `#${app.id}`}</h2>
+          <span className={`badge badge-${app.status}`}>{t(`status.${app.status}`)}</span>
+          <button className="drawer-x" onClick={onClose}>×</button>
+        </div>
+        <div className="drawer-body">
+          <div className="kv"><span>{t('apps.origin')}</span><b>{app.origin_address || '–'}</b></div>
+          <div className="kv"><span>{t('apps.topChoice')}</span><b>{top ? L(top, 'name') : '–'}</b></div>
+          <div className="kv"><span>{t('p.budget')}</span><b>{t('common.hkd')}{p.monthly_budget?.toLocaleString()}{t('common.perMonth')}</b></div>
+          <div className="kv"><span>{t('p.stepFree')}</span><b>{p.needs_step_free ? '✓' : '–'}</b></div>
+          <div className="kv"><span>{t('p.careLevel')}</span><b>{t(`care.${p.care_level ?? 0}`)}</b></div>
 
-      <div className="kv"><span>{t('apps.origin')}</span><b>{app.origin_address || '–'}</b></div>
-      <div className="kv"><span>{t('apps.topChoice')}</span><b>{top ? L(top, 'name') : '–'}</b></div>
-      <div className="kv"><span>{t('p.budget')}</span><b>{t('common.hkd')}{p.monthly_budget?.toLocaleString()}{t('common.perMonth')}</b></div>
-      <div className="kv"><span>{t('p.stepFree')}</span><b>{p.needs_step_free ? '✓' : '–'}</b></div>
-      <div className="kv"><span>{t('p.careLevel')}</span><b>{t(`care.${p.care_level ?? 0}`)}</b></div>
+          {top?.match && (
+            <>
+              <div className="group-title">{t('apps.profileSummary')}</div>
+              <div className="factors">
+                {top.match.factors.map((f) => (
+                  <div className="fbar" key={f.key}>
+                    <div className="flabel">
+                      <span>{lang === 'en' ? f.label_en : f.label_tc}</span>
+                      <span>{Math.round(f.value * 100)}%</span>
+                    </div>
+                    <div className="ftrack"><div className="ffill" style={{ width: `${f.value * 100}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
-      {top?.match && (
-        <>
-          <div className="group-title">{t('apps.profileSummary')}</div>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            <ScoreDial score={top.match.score} />
-            <div style={{ flex: 1 }}><FactorBars factors={top.match.factors} /></div>
+          <div className="group-title">{t('apps.docs')} ({app.documents.length})</div>
+          {app.documents.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>{t('docs.none')}</div>}
+          {app.documents.map((d) => (
+            <a className="doc" key={d.id} href={`/api/applications/${app.id}/documents/${d.id}`} target="_blank" rel="noreferrer">
+              <span>📄</span><span className="fname">{d.filename}</span>
+              <span style={{ color: 'var(--muted)' }}>{(d.size / 1024).toFixed(1)} KB</span>
+            </a>
+          ))}
+
+          <div className="group-title">{t('apps.decision')}</div>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('apps.notePh')} />
+          <div className="btn-row" style={{ marginTop: 12 }}>
+            <button className="btn grow" disabled={saving} onClick={() => decide('under_review')}>{t('apps.review')}</button>
+            <button className="btn btn-danger" disabled={saving} onClick={() => decide('rejected')}>{t('apps.reject')}</button>
+            <button className="btn btn-primary" disabled={saving} onClick={() => decide('approved')}>{t('apps.approve')}</button>
           </div>
-        </>
-      )}
-
-      <div className="group-title">{t('apps.docs')} ({app.documents.length})</div>
-      {app.documents.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>{t('docs.none')}</div>}
-      {app.documents.map((d) => (
-        <a className="doc" key={d.id} href={`/api/applications/${app.id}/documents/${d.id}`} target="_blank" rel="noreferrer">
-          <span>📄</span><span className="fname">{d.filename}</span>
-          <span style={{ color: 'var(--muted)' }}>{(d.size / 1024).toFixed(1)} KB</span>
-        </a>
-      ))}
-
-      <div className="group-title">{t('apps.decision')}</div>
-      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('apps.notePh')} />
-      <div className="btn-row" style={{ marginTop: 12 }}>
-        <button className="btn grow" disabled={saving} onClick={() => decide('under_review')}>{t('apps.review')}</button>
-        <button className="btn btn-danger" disabled={saving} onClick={() => decide('rejected')}>{t('apps.reject')}</button>
-        <button className="btn btn-primary" disabled={saving} onClick={() => decide('approved')}>{t('apps.approve')}</button>
+        </div>
       </div>
-      {app.decided_at && <div className="seeded-note">{t('apps.saved')} · {new Date(app.decided_at).toLocaleString(lang === 'en' ? 'en-HK' : 'zh-HK')}</div>}
     </div>
   );
 }

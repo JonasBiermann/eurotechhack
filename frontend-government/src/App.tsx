@@ -6,6 +6,7 @@ import { GovernmentView } from './views/GovernmentView';
 const DEFAULT_VIEW: MapState = {
   layer: 'heatmap', metric: 'age', origin: null, footprintsBbox: null,
   destinations: [], selectedDestId: null, focus: null,
+  newTowns: [],
 };
 
 export default function App() {
@@ -18,17 +19,16 @@ export default function App() {
       <header className="app-header">
         <div className="brand">
           <div className="logo" />
-          <b>{t('app.title')}</b>
-          <small>{t('app.tagline')}</small>
+          <div className="brand-text">
+            <b>{t('app.title')}</b>
+            <small>{t('app.subtitle')}</small>
+          </div>
         </div>
         <div className="header-spacer" />
-        <span style={{
-          padding: '7px 14px', borderRadius: 11, fontWeight: 700, fontSize: 13,
-          color: '#170c2e', background: 'linear-gradient(135deg,#a78bfa,#c4b1fb)',
-        }}>{t('mode.government')}</span>
+        <span className="gov-chip">{t('mode.government')}</span>
         <button className="lang-btn" onClick={toggle} title="EN / 繁體中文">{t('lang.name')}</button>
       </header>
-      <GovernmentView setView={setView} />
+      <GovernmentView view={view} setView={setView} />
     </div>
   );
 }

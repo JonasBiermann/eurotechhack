@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { api, type Destination, type Metric } from '../api/client';
+import { api, type Destination, type Metric, type NewTown } from '../api/client';
 import type { Lang } from '../i18n/dict';
 
 export interface MapState {
@@ -12,12 +12,14 @@ export interface MapState {
   destinations: Destination[];
   selectedDestId: string | null;
   focus: { center: [number, number]; zoom: number } | null;
+  // gov console: persistent senior-housing inventory
+  newTowns?: NewTown[];
 }
 
-const STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-const HK_BOUNDS: [number, number, number, number] = [114.14, 22.255, 114.255, 22.355];
+const STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+// Wider bounds so both urban core and new-town areas fit at first load.
+const HK_BOUNDS: [number, number, number, number] = [113.94, 22.21, 114.31, 22.57];
 
-// metric -> color interpolate stops on properties.value
 const RAMPS: Record<Metric, [number, string][]> = {
   age: [[20, '#0ea5a4'], [35, '#fbbf24'], [50, '#f97316'], [72, '#ef4444']],
   density: [[1, '#134e4a'], [40, '#2dd4bf'], [90, '#fbbf24'], [170, '#ef4444']],
@@ -42,7 +44,6 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
   const heatCache = useRef<Record<string, any>>({});
   const prevLayer = useRef<string>('');
 
-  // create once
   useEffect(() => {
     if (!ref.current) return;
     const m = new maplibregl.Map({
@@ -57,7 +58,6 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // re-apply on prop change
   useEffect(() => { if (ready.current) apply(); /* eslint-disable-next-line */ }, [view, lang]);
 
   function removeLayer(id: string) {
@@ -67,6 +67,41 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
   function removeSource(id: string) {
     const m = map.current!;
     if (m.getSource(id)) m.removeSource(id);
+  }
+
+  function applyNewTowns(towns: NewTown[]) {
+    const m = map.current!;
+    const fc: any = {
+      type: 'FeatureCollection',
+      features: towns.map((t) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [t.lng, t.lat] },
+        properties: {
+          id: t.id,
+          name: lang === 'en' ? t.name_en : t.name_tc,
+          units: t.available_units,
+        },
+      })),
+    };
+    if (m.getSource('nt')) (m.getSource('nt') as any).setData(fc);
+    else m.addSource('nt', { type: 'geojson', data: fc });
+    if (!m.getLayer('nt-ring')) {
+      m.addLayer({ type: 'circle', id: 'nt-ring', source: 'nt',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['get', 'units'], 0, 8, 6000, 30],
+          'circle-color': '#0f8a6a', 'circle-opacity': 0.14,
+          'circle-stroke-color': '#0f8a6a', 'circle-stroke-width': 1.8, 'circle-stroke-opacity': 0.7,
+        } });
+      m.addLayer({ type: 'circle', id: 'nt-dot', source: 'nt',
+        paint: { 'circle-radius': 5, 'circle-color': '#0f8a6a', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+      m.addLayer({ type: 'symbol', id: 'nt-label', source: 'nt',
+        layout: { 'text-field': ['get', 'name'], 'text-size': 12, 'text-offset': [0, 1.6],
+          'text-anchor': 'top', 'text-font': ['Open Sans Bold'] },
+        paint: { 'text-color': '#0a4d3a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 } });
+    }
+  }
+  function clearNewTowns() {
+    removeLayer('nt-ring'); removeLayer('nt-dot'); removeLayer('nt-label'); removeSource('nt');
   }
 
   async function apply() {
@@ -84,9 +119,9 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
       else m.addSource('heat', { type: 'geojson', data });
       if (!m.getLayer('heat-fill')) {
         m.addLayer({ type: 'fill', id: 'heat-fill', source: 'heat',
-          paint: { 'fill-color': colorByValue(view.metric), 'fill-opacity': 0.6 } });
+          paint: { 'fill-color': colorByValue(view.metric), 'fill-opacity': 0.55 } });
         m.addLayer({ type: 'line', id: 'heat-line', source: 'heat',
-          paint: { 'line-color': 'rgba(255,255,255,0.12)', 'line-width': 0.5 } });
+          paint: { 'line-color': 'rgba(20,30,60,0.10)', 'line-width': 0.5 } });
       } else {
         m.setPaintProperty('heat-fill', 'fill-color', colorByValue(view.metric));
       }
@@ -94,7 +129,7 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
       removeLayer('heat-fill'); removeLayer('heat-line'); removeSource('heat');
     }
 
-    // ---- destination pins ----
+    // ---- destination pins (resident-chosen GBA city on an application) ----
     if (view.layer === 'destinations') {
       const fc = {
         type: 'FeatureCollection',
@@ -119,11 +154,15 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
         m.addLayer({ type: 'symbol', id: 'dest-label', source: 'dests',
           layout: { 'text-field': ['get', 'name'], 'text-size': 13, 'text-offset': [0, 1.6],
             'text-anchor': 'top', 'text-font': ['Open Sans Bold'] },
-          paint: { 'text-color': '#eef4fb', 'text-halo-color': '#060912', 'text-halo-width': 1.4 } });
+          paint: { 'text-color': '#15233d', 'text-halo-color': '#ffffff', 'text-halo-width': 1.8 } });
       }
     } else {
       removeLayer('dest-halo'); removeLayer('dest-pt'); removeLayer('dest-label'); removeSource('dests');
     }
+
+    // ---- HK new-town senior-housing inventory (always-on informational layer) ----
+    if (view.newTowns && view.newTowns.length) applyNewTowns(view.newTowns);
+    else clearNewTowns();
 
     // ---- footprints (resident building context) ----
     if (view.footprintsBbox) {
@@ -136,7 +175,7 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
             paint: { 'fill-color': ['case', ['==', ['get', 'no_lift'], 1], '#fb7185', '#2dd4bf'],
               'fill-opacity': 0.45 } });
           m.addLayer({ type: 'line', id: 'foot-line', source: 'foot',
-            paint: { 'line-color': 'rgba(255,255,255,0.3)', 'line-width': 0.6 } });
+            paint: { 'line-color': 'rgba(20,30,60,0.25)', 'line-width': 0.6 } });
         }
       } catch { /* ignore */ }
     } else {
@@ -148,8 +187,8 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
       if (!marker.current) {
         const el = document.createElement('div');
         el.style.cssText =
-          'width:18px;height:18px;border-radius:50%;background:#a78bfa;border:3px solid #fff;' +
-          'box-shadow:0 0 0 6px rgba(167,139,250,.35),0 0 14px rgba(167,139,250,.8)';
+          'width:18px;height:18px;border-radius:50%;background:#ba0c2f;border:3px solid #fff;' +
+          'box-shadow:0 0 0 6px rgba(186,12,47,.20),0 4px 14px rgba(186,12,47,.45)';
         marker.current = new maplibregl.Marker({ element: el });
       }
       marker.current.setLngLat([view.origin.lng, view.origin.lat]).addTo(m);

@@ -19,6 +19,12 @@ export interface Destination {
   hk_community: number; travel_time_hr: number; match?: MatchResult;
 }
 
+export interface NewTown extends Destination {
+  region: string;
+  available_units: number;
+  planned_units: number;
+}
+
 export interface BdRecord {
   id: number; address_en: string; address_tc: string;
   district_en: string; district_tc: string; region_en: string; region_tc: string;
@@ -68,6 +74,7 @@ async function jpost<T>(url: string, body: unknown): Promise<T> {
 export const api = {
   districts: () => jget<District[]>('/api/districts'),
   destinations: () => jget<Destination[]>('/api/destinations'),
+  newTowns: () => jget<NewTown[]>('/api/new_towns'),
   rank: (profile: Profile) => jpost<Destination[]>('/api/destinations/rank', profile),
   search: (q: string) => jget<BdRecord[]>(`/api/buildings/search?q=${encodeURIComponent(q)}&limit=12`),
   building: (id: number) => jget<BdRecord>(`/api/buildings/${id}`),

@@ -328,7 +328,7 @@ def write_districts(bd_rows: list[dict]) -> None:
             "oldest_age": max(ages) if ages else None,
             "pct_no_lift": round(sum(nl) / len(nl) * 100, 1) if nl else None,
         })
-    config.DISTRICTS_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=2))
+    config.DISTRICTS_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  districts.json: {len(out)} districts")
 
 

@@ -13,6 +13,7 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 DB_PATH = DATA_DIR / "silverlink.db"
 BUILDINGS_GEOJSON = DATA_DIR / "buildings.geojson"
 DESTINATIONS_JSON = DATA_DIR / "destinations.json"
+NEW_TOWNS_JSON = DATA_DIR / "new_towns.json"
 DISTRICTS_JSON = DATA_DIR / "districts.json"
 VOUCHER_HOSPITALS_JSON = DATA_DIR / "voucher_hospitals.json"   # 21 EHCV GBA service points (hardcoded, gov-sourced)
 SOP_WAITS_JSON = DATA_DIR / "hk_sop_waits.json"               # cached HA Specialist-Outpatient waits (real snapshot)

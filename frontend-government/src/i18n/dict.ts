@@ -141,4 +141,36 @@ export const DICT: Record<string, Entry> = {
   'sub.another': { en: 'Start another', zh: '再次申請' },
   'sub.opt.in': { en: 'This application is entirely voluntary and resident-initiated.',
                   zh: '此申請完全自願，由居民主動提出。' },
+
+  // ---- Government console ----
+  'app.subtitle': { en: 'Senior support · Northern Metropolis housing options',
+                    zh: '長者支援 · 北部都會區房屋選項' },
+
+  'tab.map':      { en: 'Map',          zh: '地圖' },
+  'tab.requests': { en: 'Applications', zh: '申請' },
+
+  'sec.pressure': { en: 'Care pressure map',           zh: '照護壓力地圖' },
+  'sec.newtowns': { en: 'Senior housing options',      zh: '長者房屋選項' },
+  'sec.requests': { en: 'Resident applications',       zh: '居民申請' },
+
+  'nt.intro':     { en: 'Senior-friendly homes being built in HK new towns. Residents may apply to any of these if they choose.',
+                    zh: '香港新市鎮正在建設的長者友善住屋。居民可自行申請。' },
+  'nt.available': { en: 'available', zh: '可供申請' },
+  'nt.planned':   { en: 'planned',   zh: '規劃中' },
+
+  'req.intro':    { en: 'Voluntary applications from residents seeking better-suited housing.',
+                    zh: '居民自願提出的申請，希望尋找更合適的居所。' },
+  'req.all':      { en: 'All',       zh: '全部' },
+  'req.new':      { en: 'New',       zh: '新申請' },
+  'req.review':   { en: 'Reviewing', zh: '審核中' },
+  'req.approved': { en: 'Approved',  zh: '已批准' },
+  'req.closed':   { en: 'Closed',    zh: '已結案' },
+  'req.empty':    { en: 'No applications match this filter.', zh: '沒有符合的申請。' },
+  'req.match':    { en: 'match', zh: '配對度' },
+  'req.daysAgo':  { en: 'd ago', zh: '日前' },
+  'req.today':    { en: 'today', zh: '今日' },
+  'req.docs':     { en: 'docs', zh: '文件' },
+
+  'pressure.title': { en: 'Where housing options matter most for older residents',
+                      zh: '長者最需要房屋選項的地區' },
 };

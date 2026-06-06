@@ -29,6 +29,7 @@ def _load(path, default):
 
 
 DESTINATIONS = _load(config.DESTINATIONS_JSON, [])
+NEW_TOWNS = _load(config.NEW_TOWNS_JSON, [])
 DISTRICTS = _load(config.DISTRICTS_JSON, [])
 db.init_db()
 
@@ -235,6 +236,17 @@ def rank(profile: dict = Body(default={}), persona: str | None = Query(None)):
     """
     persona = persona or profile.get("persona")
     return scoring.rank_destinations(profile, DESTINATIONS, persona=persona)
+
+
+# --------------------------------------- HK new-town senior-housing options (gov)
+
+@app.get("/api/new_towns")
+def new_towns():
+    """HK outskirt new towns where senior-friendly housing is being built
+    (Northern Metropolis + Lantau). Informational — resident applications
+    reference these by ID when residents pick a destination themselves.
+    """
+    return NEW_TOWNS
 
 
 # ------------------------------------------------------------ application loop
