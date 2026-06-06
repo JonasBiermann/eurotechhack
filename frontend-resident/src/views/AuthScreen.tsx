@@ -12,6 +12,7 @@ export function AuthScreen() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [hkid, setHkid] = useState('');
   const [name, setName] = useState('');
+  const [consent, setConsent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -22,9 +23,10 @@ export function AuthScreen() {
     const normalized = hkid.trim().toUpperCase().replace(/\s/g, '');
     if (!HKID_RE.test(normalized)) { setErr(t('auth.err.invalid')); return; }
     if (isRegister && !name.trim()) { setErr(t('auth.err.name')); return; }
+    if (isRegister && !consent) { setErr(t('auth.err.ehealth')); return; }
     setBusy(true);
     try {
-      if (isRegister) await register(normalized, name.trim());
+      if (isRegister) await register(normalized, name.trim(), consent);
       else await login(normalized);
     } catch (e) {
       const status = e instanceof ApiError ? e.status : 0;
@@ -37,7 +39,7 @@ export function AuthScreen() {
     }
   };
 
-  const switchMode = () => { setMode(isRegister ? 'login' : 'register'); setErr(null); };
+  const switchMode = () => { setMode(isRegister ? 'login' : 'register'); setErr(null); setConsent(false); };
 
   return (
     <GovShell crumbs={[t('nav.home'), t('nav.residents'), t('nav.login')]}>
@@ -64,13 +66,26 @@ export function AuthScreen() {
                   onKeyDown={(e) => e.key === 'Enter' && submit()}
                   placeholder={t('auth.name.ph')}
                 />
+
+                <button type="button" className={`toggle consent ${consent ? 'on' : ''}`}
+                  style={{ marginTop: 16, alignItems: 'flex-start' }}
+                  onClick={() => setConsent((c) => !c)}>
+                  <span className={`tg-box ${consent ? 'on' : ''}`}>{consent ? '✓' : ''}</span>
+                  <span className="tg-label">
+                    <b style={{ display: 'block', fontSize: 14 }}>{t('auth.ehealth.label')}</b>
+                    <span className="muted" style={{ display: 'block', marginTop: 3, fontSize: 12.5, lineHeight: 1.45 }}>
+                      {t('auth.ehealth.desc')}
+                    </span>
+                  </span>
+                </button>
               </>
             )}
             {err && <div className="auth-err">{err}</div>}
           </section>
 
           <div className="actions">
-            <button className="btn btn-primary btn-lg grow" disabled={busy} onClick={submit}>
+            <button className="btn btn-primary btn-lg grow"
+              disabled={busy || (isRegister && !consent)} onClick={submit}>
               {t(isRegister ? 'auth.cta.register' : 'auth.cta.login')}
             </button>
           </div>

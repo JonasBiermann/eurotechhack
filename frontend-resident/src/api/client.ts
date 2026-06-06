@@ -78,12 +78,21 @@ export interface Application {
   applicant_name: string; origin_address: string;
   profile: Profile; destinations: Destination[]; documents: DocMeta[];
   top_destination: Destination | null; note: string | null; decided_at: string | null;
+  declaration_at: string | null;
+}
+
+export type PermitKind = 'home_return_permit' | 'guangdong_allowance';
+export type AllowanceScheme = 'oaa' | 'oala';
+export interface PermitApplication {
+  id: number; resident_id: number; kind: PermitKind;
+  scheme: AllowanceScheme | null; status: string;
+  details: Record<string, unknown>; created_at: string;
 }
 
 export type Metric = 'age' | 'density' | 'nolift';
 export type FeatureCollection = { type: 'FeatureCollection'; features: any[] };
 
-export interface Resident { id: number; hkid: string; name: string; }
+export interface Resident { id: number; hkid: string; name: string; ehealth_consent?: boolean; }
 export interface AuthResult { token: string; resident: Resident; }
 
 /** Error carrying the HTTP status so the UI can branch on 404/409/400 etc. */
@@ -127,7 +136,8 @@ async function jpost<T>(url: string, body: unknown): Promise<T> {
 }
 
 export const api = {
-  register: (hkid: string, name: string) => jpost<AuthResult>('/api/auth/register', { hkid, name }),
+  register: (hkid: string, name: string, ehealth_consent: boolean) =>
+    jpost<AuthResult>('/api/auth/register', { hkid, name, ehealth_consent }),
   login: (hkid: string) => jpost<AuthResult>('/api/auth/login', { hkid }),
   me: () => jget<Resident>('/api/auth/me'),
   logout: () => jpost<{ ok: boolean }>('/api/auth/logout', {}),
@@ -152,6 +162,12 @@ export const api = {
     if (!r.ok) throw new ApiError(r.status, `upload ${r.status}`);
     return r.json();
   },
+  submitApplication: (id: number) =>
+    jpost<{ id: number; status: string }>(`/api/applications/${id}/submit`, {}),
+  createPermit: (payload: {
+    kind: PermitKind; scheme?: AllowanceScheme; details: Record<string, unknown>;
+  }) => jpost<{ id: number; kind: PermitKind; scheme: AllowanceScheme | null; status: string }>('/api/permits', payload),
+  myPermits: () => jget<PermitApplication[]>('/api/permits/mine'),
   applications: () => jget<Application[]>('/api/applications'),
   application: (id: number) => jget<Application>(`/api/applications/${id}`),
   decide: (id: number, decision: string, note: string) =>

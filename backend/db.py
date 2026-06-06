@@ -27,13 +27,14 @@ CREATE INDEX IF NOT EXISTS idx_bd_district ON bd_records(district_id);
 CREATE TABLE IF NOT EXISTS applications (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at       TEXT,
-  status           TEXT,                -- submitted | under_review | approved | rejected
+  status           TEXT,                -- started | submitted | under_review | approved | rejected
   applicant_name   TEXT,
   origin_address   TEXT,
   profile_json     TEXT,
   destinations_json TEXT,               -- ranked GBA choices with scores
   note             TEXT,                -- official's decision note
-  decided_at       TEXT
+  decided_at       TEXT,
+  declaration_at   TEXT                 -- when the resident declared truth & submitted
 );
 
 CREATE TABLE IF NOT EXISTS documents (
@@ -62,10 +63,22 @@ CREATE TABLE IF NOT EXISTS case_events (
 CREATE INDEX IF NOT EXISTS idx_evt_app ON case_events(application_id, created_at);
 
 CREATE TABLE IF NOT EXISTS residents (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  hkid       TEXT UNIQUE,        -- normalized upper-case, e.g. A123456(7)
-  name       TEXT,
-  created_at TEXT
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  hkid            TEXT UNIQUE,     -- normalized upper-case, e.g. A123456(7)
+  name            TEXT,
+  created_at      TEXT,
+  ehealth_consent INTEGER          -- 1 = consented to the E-Health System at registration
+);
+
+CREATE TABLE IF NOT EXISTS permit_applications (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  resident_id  INTEGER,
+  kind         TEXT,               -- 'home_return_permit' | 'guangdong_allowance'
+  scheme       TEXT,               -- 'oaa' | 'oala' (allowance only; NULL for permit)
+  status       TEXT,               -- 'submitted'
+  details_json TEXT,
+  created_at   TEXT,
+  FOREIGN KEY (resident_id) REFERENCES residents(id)
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -87,12 +100,17 @@ def init_db() -> None:
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = connect()
     conn.executescript(SCHEMA)
-    # Defensive migration: existing DBs already have `applications` (so the
-    # CREATE above is a no-op for them) and need the owner column added.
-    try:
-        conn.execute("ALTER TABLE applications ADD COLUMN resident_id INTEGER")
-    except sqlite3.OperationalError:
-        pass  # column already exists
+    # Defensive migrations: existing DBs already have these tables (so the CREATE
+    # statements above are no-ops for them) and need the newer columns added.
+    for stmt in (
+        "ALTER TABLE applications ADD COLUMN resident_id INTEGER",
+        "ALTER TABLE applications ADD COLUMN declaration_at TEXT",
+        "ALTER TABLE residents ADD COLUMN ehealth_consent INTEGER",
+    ):
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
     conn.close()
 
