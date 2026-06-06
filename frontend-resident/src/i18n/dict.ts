@@ -4,12 +4,41 @@ type Entry = { en: string; zh: string };
 
 export const DICT: Record<string, Entry> = {
   'app.title': { en: 'SilverLink', zh: '銀聯橋' },
-  'app.tagline': { en: 'Voluntary elderly relocation, matched on real city data',
-                   zh: '長者自願遷居，以真實城市數據配對' },
+  'app.tagline': { en: 'Elderly relocation, matched on real city data',
+                   zh: '長者遷居，以真實城市數據配對' },
 
   'mode.resident': { en: 'Resident', zh: '居民' },
   'mode.government': { en: 'Government', zh: '政府' },
   'lang.name': { en: 'EN', zh: '繁' },
+
+  // ---- auth (HKID login / register) ----
+  'auth.login.title': { en: 'Welcome back', zh: '歡迎回來' },
+  'auth.login.sub': { en: 'Sign in with your HK identity card number.', zh: '請以香港身份證號碼登入。' },
+  'auth.register.title': { en: 'Create your account', zh: '建立帳戶' },
+  'auth.register.sub': { en: 'Register with your HK identity card number.', zh: '請以香港身份證號碼註冊。' },
+  'auth.hkid': { en: 'HK identity card number', zh: '香港身份證號碼' },
+  'auth.hkid.ph': { en: 'e.g. A123456(7)', zh: '例如：A123456(7)' },
+  'auth.name': { en: 'Your name', zh: '你的姓名' },
+  'auth.name.ph': { en: 'e.g. Mr Chan', zh: '例如：陳先生' },
+  'auth.cta.login': { en: 'Log in', zh: '登入' },
+  'auth.cta.register': { en: 'Register', zh: '註冊' },
+  'auth.toggle.toRegister': { en: "No account yet? Register", zh: '還沒有帳戶？註冊' },
+  'auth.toggle.toLogin': { en: 'Already have an account? Log in', zh: '已有帳戶？登入' },
+  'auth.err.notfound': { en: 'No account for this HKID — please register.', zh: '此身份證沒有帳戶 — 請先註冊。' },
+  'auth.err.exists': { en: 'This HKID is already registered — please log in.', zh: '此身份證已註冊 — 請登入。' },
+  'auth.err.invalid': { en: 'Please enter a valid HKID, e.g. A123456(7).', zh: '請輸入有效身份證號碼，例如 A123456(7)。' },
+  'auth.err.name': { en: 'Please enter your name.', zh: '請輸入你的姓名。' },
+  'auth.err.generic': { en: 'Something went wrong. Please try again.', zh: '發生錯誤，請再試一次。' },
+  'auth.logout': { en: 'Log out', zh: '登出' },
+
+  // ---- resident dashboard ----
+  'dash.title': { en: 'Your applications', zh: '你的申請' },
+  'dash.sub': { en: 'Track the status of your relocation applications.', zh: '查看你的遷居申請狀態。' },
+  'dash.empty': { en: "You haven't submitted any applications yet.", zh: '你尚未提交任何申請。' },
+  'dash.new': { en: 'Start new application', zh: '開始新申請' },
+  'dash.submitted_on': { en: 'Submitted', zh: '提交於' },
+  'dash.app': { en: 'Application', zh: '申請' },
+  'dash.backToList': { en: 'Back to my applications', zh: '返回我的申請' },
 
   'common.next': { en: 'Next', zh: '下一步' },
   'common.back': { en: 'Back', zh: '返回' },
@@ -139,16 +168,19 @@ export const DICT: Record<string, Entry> = {
                     zh: '政府人員將會審核。你的狀態：' },
   'sub.officerNote': { en: 'Officer note', zh: '人員備註' },
   'sub.another': { en: 'Start another', zh: '再次申請' },
-  'sub.opt.in': { en: 'This application is entirely voluntary and resident-initiated.',
-                  zh: '此申請完全自願，由居民主動提出。' },
+  'sub.opt.in': { en: 'Your information is used only to match and process this application.',
+                  zh: '你的資料僅用於配對及處理本申請。' },
 
   // ---- new step-by-step flow ----
   'flow.start': { en: 'Start', zh: '開始' },
   'flow.continue': { en: 'Continue', zh: '繼續' },
   'flow.step': { en: 'Step', zh: '步驟' },
+  'form.cta': { en: 'See my matches', zh: '查看配對結果' },
+  'form.sub': { en: 'Tell us about your needs — it all fits on this one page.',
+                zh: '告訴我們你的需要 — 一頁即可填妥。' },
   'flow.intro.title': { en: 'Find a home that fits your life', zh: '尋找適合你生活的居所' },
-  'flow.intro.sub': { en: "Answer three quick questions and we'll match you to Greater Bay Area cities — voluntarily, at your own pace.",
-                      zh: '回答三條簡短問題，我們便為你配對大灣區城市 — 完全自願，由你話事。' },
+  'flow.intro.sub': { en: "Answer a few quick questions and we'll match you to Greater Bay Area cities.",
+                      zh: '回答幾條簡短問題，我們便為你配對大灣區城市。' },
 
   'q.stepfree.title': { en: 'Do you need step-free access?', zh: '你需要無障礙通道嗎？' },
   'q.stepfree.sub': { en: 'A home with a lift and no stairs to climb.', zh: '有升降機、無需爬樓梯的居所。' },

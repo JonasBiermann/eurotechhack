@@ -46,6 +46,20 @@ CREATE TABLE IF NOT EXISTS documents (
   uploaded_at    TEXT,
   FOREIGN KEY (application_id) REFERENCES applications(id)
 );
+
+CREATE TABLE IF NOT EXISTS residents (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  hkid       TEXT UNIQUE,        -- normalized upper-case, e.g. A123456(7)
+  name       TEXT,
+  created_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token       TEXT PRIMARY KEY,  -- opaque, secrets.token_hex(24)
+  resident_id INTEGER,
+  created_at  TEXT,
+  FOREIGN KEY (resident_id) REFERENCES residents(id)
+);
 """
 
 
@@ -59,6 +73,12 @@ def init_db() -> None:
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = connect()
     conn.executescript(SCHEMA)
+    # Defensive migration: existing DBs already have `applications` (so the
+    # CREATE above is a no-op for them) and need the owner column added.
+    try:
+        conn.execute("ALTER TABLE applications ADD COLUMN resident_id INTEGER")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.commit()
     conn.close()
 

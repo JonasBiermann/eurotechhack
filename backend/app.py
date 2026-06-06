@@ -2,9 +2,11 @@
 resident→government application loop. Run from backend/:  uvicorn app:app --reload
 """
 import json
+import re
+import secrets
 from datetime import datetime, timezone
 
-from fastapi import Body, FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -33,6 +35,95 @@ db.init_db()
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ------------------------------------------------------------- auth (HKID-only)
+
+_HKID_RE = re.compile(r"^[A-Z]{1,2}[0-9]{6}(\([0-9A]\))?$")
+
+
+def _normalize_hkid(raw: str | None) -> str:
+    """Upper-case, strip whitespace, light-validate a HK identity card number."""
+    hkid = (raw or "").strip().upper().replace(" ", "")
+    if not _HKID_RE.match(hkid):
+        raise HTTPException(400, "invalid HKID format")
+    return hkid
+
+
+def _issue_session(conn, resident_id: int) -> str:
+    token = secrets.token_hex(24)
+    conn.execute(
+        "INSERT INTO sessions (token, resident_id, created_at) VALUES (?,?,?)",
+        (token, resident_id, _now()),
+    )
+    return token
+
+
+def current_resident(authorization: str | None = Header(None)) -> dict:
+    """Resolve `Authorization: Bearer <token>` to a resident row, or 401."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(401, "not authenticated")
+    token = authorization.split(" ", 1)[1].strip()
+    conn = db.connect()
+    row = conn.execute(
+        """SELECT r.* FROM sessions s JOIN residents r ON r.id = s.resident_id
+           WHERE s.token = ?""",
+        (token,),
+    ).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(401, "invalid or expired session")
+    return dict(row)
+
+
+@app.post("/api/auth/register")
+def register(payload: dict = Body(...)):
+    hkid = _normalize_hkid(payload.get("hkid"))
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "name is required")
+    conn = db.connect()
+    if conn.execute("SELECT 1 FROM residents WHERE hkid=?", (hkid,)).fetchone():
+        conn.close()
+        raise HTTPException(409, "this HKID is already registered")
+    cur = conn.execute(
+        "INSERT INTO residents (hkid, name, created_at) VALUES (?,?,?)",
+        (hkid, name, _now()),
+    )
+    resident_id = cur.lastrowid
+    token = _issue_session(conn, resident_id)
+    conn.commit()
+    conn.close()
+    return {"token": token, "resident": {"id": resident_id, "hkid": hkid, "name": name}}
+
+
+@app.post("/api/auth/login")
+def login(payload: dict = Body(...)):
+    hkid = _normalize_hkid(payload.get("hkid"))
+    conn = db.connect()
+    row = conn.execute("SELECT * FROM residents WHERE hkid=?", (hkid,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "no account for this HKID — please register")
+    token = _issue_session(conn, row["id"])
+    conn.commit()
+    conn.close()
+    return {"token": token, "resident": {"id": row["id"], "hkid": row["hkid"], "name": row["name"]}}
+
+
+@app.get("/api/auth/me")
+def me(resident: dict = Depends(current_resident)):
+    return {"id": resident["id"], "hkid": resident["hkid"], "name": resident["name"]}
+
+
+@app.post("/api/auth/logout")
+def logout(authorization: str | None = Header(None), resident: dict = Depends(current_resident)):
+    token = authorization.split(" ", 1)[1].strip()
+    conn = db.connect()
+    conn.execute("DELETE FROM sessions WHERE token=?", (token,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
 
 
 # ------------------------------------------------------------- HK backbone data
@@ -135,16 +226,19 @@ def rank(profile: dict = Body(default={})):
 # ------------------------------------------------------------ application loop
 
 @app.post("/api/applications")
-def create_application(payload: dict = Body(...)):
+def create_application(payload: dict = Body(...), resident: dict = Depends(current_resident)):
+    """Create an application owned by the authenticated resident. The applicant
+    name is taken from the account, not the client payload."""
     conn = db.connect()
     cur = conn.execute(
         """INSERT INTO applications
            (created_at, status, applicant_name, origin_address,
-            profile_json, destinations_json, note, decided_at)
-           VALUES (?,?,?,?,?,?,?,?)""",
-        (_now(), "submitted", payload.get("applicant_name"), payload.get("origin_address"),
+            profile_json, destinations_json, note, decided_at, resident_id)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (_now(), "submitted", resident["name"], payload.get("origin_address"),
          json.dumps(payload.get("profile", {}), ensure_ascii=False),
-         json.dumps(payload.get("destinations", []), ensure_ascii=False), None, None),
+         json.dumps(payload.get("destinations", []), ensure_ascii=False), None, None,
+         resident["id"]),
     )
     conn.commit()
     app_id = cur.lastrowid
@@ -191,6 +285,17 @@ def _app_to_dict(row, conn) -> dict:
 def list_applications():
     conn = db.connect()
     rows = conn.execute("SELECT * FROM applications ORDER BY id DESC").fetchall()
+    out = [_app_to_dict(r, conn) for r in rows]
+    conn.close()
+    return out
+
+
+@app.get("/api/applications/mine")
+def my_applications(resident: dict = Depends(current_resident)):
+    conn = db.connect()
+    rows = conn.execute(
+        "SELECT * FROM applications WHERE resident_id=? ORDER BY id DESC", (resident["id"],)
+    ).fetchall()
     out = [_app_to_dict(r, conn) for r in rows]
     conn.close()
     return out

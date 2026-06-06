@@ -51,21 +51,55 @@ export interface Application {
 export type Metric = 'age' | 'density' | 'nolift';
 export type FeatureCollection = { type: 'FeatureCollection'; features: any[] };
 
+export interface Resident { id: number; hkid: string; name: string; }
+export interface AuthResult { token: string; resident: Resident; }
+
+/** Error carrying the HTTP status so the UI can branch on 404/409/400 etc. */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
+}
+
+const TOKEN_KEY = 'silverlink.token';
+let authToken: string | null = localStorage.getItem(TOKEN_KEY);
+
+export function setAuthToken(t: string | null): void {
+  authToken = t;
+  if (t) localStorage.setItem(TOKEN_KEY, t);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+export function getAuthToken(): string | null { return authToken; }
+
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const h: Record<string, string> = { ...(extra || {}) };
+  if (authToken) h['Authorization'] = `Bearer ${authToken}`;
+  return h;
+}
+
+async function detail(r: Response): Promise<string> {
+  try { return (await r.json()).detail ?? r.statusText; } catch { return r.statusText; }
+}
+
 async function jget<T>(url: string): Promise<T> {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`${r.status} ${url}`);
+  const r = await fetch(url, { headers: authHeaders() });
+  if (!r.ok) throw new ApiError(r.status, await detail(r));
   return r.json();
 }
 async function jpost<T>(url: string, body: unknown): Promise<T> {
   const r = await fetch(url, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`${r.status} ${url}`);
+  if (!r.ok) throw new ApiError(r.status, await detail(r));
   return r.json();
 }
 
 export const api = {
+  register: (hkid: string, name: string) => jpost<AuthResult>('/api/auth/register', { hkid, name }),
+  login: (hkid: string) => jpost<AuthResult>('/api/auth/login', { hkid }),
+  me: () => jget<Resident>('/api/auth/me'),
+  logout: () => jpost<{ ok: boolean }>('/api/auth/logout', {}),
+  myApplications: () => jget<Application[]>('/api/applications/mine'),
   districts: () => jget<District[]>('/api/districts'),
   destinations: () => jget<Destination[]>('/api/destinations'),
   rank: (profile: Profile) => jpost<Destination[]>('/api/destinations/rank', profile),
@@ -74,13 +108,15 @@ export const api = {
   heatmap: (metric: Metric) => jget<FeatureCollection>(`/api/heatmap?metric=${metric}`),
   footprints: (bbox: string) => jget<FeatureCollection>(`/api/buildings?bbox=${bbox}`),
   createApplication: (payload: {
-    applicant_name: string; origin_address: string; profile: Profile; destinations: Destination[];
+    origin_address: string; profile: Profile; destinations: Destination[];
   }) => jpost<{ id: number; status: string }>('/api/applications', payload),
   uploadDocument: async (appId: number, file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    const r = await fetch(`/api/applications/${appId}/documents`, { method: 'POST', body: fd });
-    if (!r.ok) throw new Error(`upload ${r.status}`);
+    const r = await fetch(`/api/applications/${appId}/documents`, {
+      method: 'POST', headers: authHeaders(), body: fd,
+    });
+    if (!r.ok) throw new ApiError(r.status, `upload ${r.status}`);
     return r.json();
   },
   applications: () => jget<Application[]>('/api/applications'),

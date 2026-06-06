@@ -4,14 +4,10 @@ import { api, type Destination, type Profile } from '../api/client';
 import type { MapState } from '../map/MapCanvas';
 import { ScoreDial, FactorBars } from '../components/MatchScore';
 
-type StepKey = 'intro' | 'stepfree' | 'care' | 'priorities' | 'results' | 'documents' | 'review';
-const ORDER: StepKey[] = ['intro', 'stepfree', 'care', 'priorities', 'results', 'documents', 'review'];
-const RESULTS_IDX = ORDER.indexOf('results');
+type StepKey = 'form' | 'results';
 
 const PRIORITIES = ['family', 'cost', 'health', 'nature', 'community'] as const;
 type Prio = (typeof PRIORITIES)[number];
-const PRIO_ICON: Record<Prio, string> = { family: '👨‍👩‍👧', cost: '💰', health: '🏥', nature: '🌳', community: '🏮' };
-const CARE_ICON = ['🟢', '🙂', '🤝', '🩺'];
 
 function buildProfile(stepFree: boolean, care: number, prios: Prio[]): Profile {
   const p: Profile = {
@@ -28,18 +24,17 @@ function buildProfile(stepFree: boolean, care: number, prios: Prio[]): Profile {
   return p;
 }
 
-export function ResidentWizard({ setView }: { setView: (v: MapState) => void }) {
+export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => void; onExit: () => void }) {
   const { t, toggle } = useI18n();
-  const [step, setStep] = useState<StepKey>('intro');
+  const [step, setStep] = useState<StepKey>('form');
   const [stepFree, setStepFree] = useState<boolean | null>(null);
   const [care, setCare] = useState<number | null>(null);
   const [prios, setPrios] = useState<Prio[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [ranked, setRanked] = useState<Destination[]>([]);
   const [choice, setChoice] = useState<Destination | null>(null);
-  const [files, setFiles] = useState<File[]>([]);
 
-  const idx = ORDER.indexOf(step);
-  const mapStage = idx >= RESULTS_IDX;
+  const mapStage = step === 'results';
 
   useEffect(() => {
     if (step === 'results' && stepFree !== null && care !== null) {
@@ -58,205 +53,140 @@ export function ResidentWizard({ setView }: { setView: (v: MapState) => void }) 
           destinations: [], selectedDestId: null, focus: null });
   }, [mapStage, ranked, choice, setView]);
 
-  const next = () => setStep(ORDER[Math.min(idx + 1, ORDER.length - 1)]);
-  const back = () => setStep(ORDER[Math.max(idx - 1, 0)]);
   const togglePrio = (k: Prio) =>
     setPrios((cur) => cur.includes(k) ? cur.filter((x) => x !== k) : cur.length < 2 ? [...cur, k] : cur);
 
-  const progress = step === 'intro' ? 4 : (idx / (ORDER.length - 1)) * 100;
+  const canSubmitForm = stepFree !== null && care !== null && prios.length > 0;
+  const progress = step === 'form' ? 50 : 100;
 
   return (
     <>
       <header className="topbar">
         <div className="brand"><div className="logo" /><b>{t('app.title')}</b><small>{t('app.tagline')}</small></div>
         <div className="spacer" />
+        <button className="btn" onClick={onExit}>← {t('dash.backToList')}</button>
         <button className="lang-btn" onClick={toggle} title="EN / 繁體中文">{t('lang.name')}</button>
       </header>
       <div className="progress"><div className="fill" style={{ width: `${progress}%` }} /></div>
 
       {mapStage ? (
         <div className="map-panel">
-          {step === 'results' && <Results ranked={ranked} choice={choice} setChoice={setChoice} onBack={back} onNext={next} />}
-          {step === 'documents' && <Docs files={files} setFiles={setFiles} onBack={back} onNext={next} />}
-          {step === 'review' && <Review profile={buildProfile(stepFree!, care!, prios)} choice={choice} ranked={ranked} files={files} onBack={back} />}
+          <ResultsPanel
+            ranked={ranked} choice={choice} setChoice={setChoice}
+            profile={buildProfile(stepFree!, care!, prios)} files={files}
+            onBack={() => setStep('form')} onExit={onExit}
+          />
         </div>
       ) : (
-        <div className="flow"><div className="flow-inner">{renderQuestion()}</div></div>
+        <div className="flow"><div className="flow-inner">{renderForm()}</div></div>
       )}
     </>
   );
 
-  function renderQuestion(): ReactNode {
-    if (step === 'intro') {
-      return (
-        <div className="center">
+  function renderForm(): ReactNode {
+    return (
+      <>
+        <div>
           <div className="eyebrow">{t('app.title')} · {t('mode.resident')}</div>
           <h1 className="q-title">{t('flow.intro.title')}</h1>
-          <p className="q-sub">{t('flow.intro.sub')}</p>
-          <div className="actions" style={{ justifyContent: 'center' }}>
-            <button className="btn btn-primary btn-lg" onClick={next}>{t('flow.start')} →</button>
-          </div>
-          <div className="optin" style={{ maxWidth: 520, margin: '22px auto 0' }}>♥ {t('sub.opt.in')}</div>
+          <p className="q-sub">{t('form.sub')}</p>
         </div>
-      );
-    }
-    if (step === 'stepfree') {
-      return (
-        <Step n={1} title={t('q.stepfree.title')} sub={t('q.stepfree.sub')} canNext={stepFree !== null} onNext={next} onBack={back}>
-          <div className="options">
-            <Opt icon="🛗" title={t('opt.yes')} desc={t('opt.yes.d')} sel={stepFree === true} onClick={() => setStepFree(true)} />
-            <Opt icon="🚶" title={t('opt.no')} desc={t('opt.no.d')} sel={stepFree === false} onClick={() => setStepFree(false)} />
-          </div>
-        </Step>
-      );
-    }
-    if (step === 'care') {
-      return (
-        <Step n={2} title={t('q.care.title')} sub={t('q.care.sub')} canNext={care !== null} onNext={next} onBack={back}>
-          <div className="options">
-            {[0, 1, 2, 3].map((c) => (
-              <Opt key={c} icon={CARE_ICON[c]} title={t(`care.${c}`)} desc={t(`care.${c}.d`)} sel={care === c} onClick={() => setCare(c)} />
-            ))}
-          </div>
-        </Step>
-      );
-    }
-    return (
-      <Step n={3} title={t('q.prio.title')} sub={t('q.prio.sub')} canNext={prios.length > 0} onNext={next} onBack={back}>
-        <div className="options">
-          {PRIORITIES.map((k) => {
-            const sel = prios.includes(k);
-            const dim = !sel && prios.length >= 2;
-            return <Opt key={k} icon={PRIO_ICON[k]} title={t(`prio.${k}`)} sel={sel} dim={dim} onClick={() => !dim && togglePrio(k)} />;
-          })}
+
+        <div className="form-grid">
+          <section className="section">
+            <h3>{t('q.stepfree.title')}</h3>
+            <div className="options">
+              <Opt title={t('opt.yes')} desc={t('opt.yes.d')} sel={stepFree === true} onClick={() => setStepFree(true)} />
+              <Opt title={t('opt.no')} desc={t('opt.no.d')} sel={stepFree === false} onClick={() => setStepFree(false)} />
+            </div>
+          </section>
+
+          <section className="section">
+            <h3>{t('q.care.title')}</h3>
+            <div className="options">
+              {[0, 1, 2, 3].map((c) => (
+                <Opt key={c} title={t(`care.${c}`)} desc={t(`care.${c}.d`)} sel={care === c} onClick={() => setCare(c)} />
+              ))}
+            </div>
+          </section>
+
+          <section className="section">
+            <h3>{t('q.prio.title')}</h3>
+            <p className="sub">{t('q.prio.sub')}</p>
+            <div className="options">
+              {PRIORITIES.map((k) => {
+                const sel = prios.includes(k);
+                const dim = !sel && prios.length >= 2;
+                return <Opt key={k} title={t(`prio.${k}`)} sel={sel} dim={dim} onClick={() => !dim && togglePrio(k)} />;
+              })}
+            </div>
+          </section>
+
+          <section className="section">
+            <h3>{t('docs.title')}</h3>
+            <p className="sub">{t('docs.sub')}</p>
+            <Dropzone files={files} setFiles={setFiles} />
+          </section>
         </div>
-      </Step>
+
+        <div className="actions">
+          <button className="btn btn-primary btn-lg grow" disabled={!canSubmitForm} onClick={() => setStep('results')}>
+            {t('form.cta')} →
+          </button>
+        </div>
+      </>
     );
   }
 }
 
 /* -------------------- shared bits -------------------- */
-function Step({ n, title, sub, canNext, onNext, onBack, children }: {
-  n: number; title: string; sub?: string; canNext: boolean; onNext: () => void; onBack: () => void; children: ReactNode;
-}) {
-  const { t } = useI18n();
-  return (
-    <>
-      <div className="eyebrow">{t('flow.step')} {n} / 3</div>
-      <h1 className="q-title">{title}</h1>
-      {sub && <p className="q-sub">{sub}</p>}
-      {children}
-      <div className="actions">
-        <button className="btn" onClick={onBack}>← {t('common.back')}</button>
-        <button className="btn btn-primary grow" disabled={!canNext} onClick={onNext}>{t('flow.continue')}</button>
-      </div>
-    </>
-  );
-}
-
-function Opt({ icon, title, desc, sel, dim, onClick }: {
-  icon: string; title: string; desc?: string; sel: boolean; dim?: boolean; onClick: () => void;
+function Opt({ title, desc, sel, dim, onClick }: {
+  title: string; desc?: string; sel: boolean; dim?: boolean; onClick: () => void;
 }) {
   return (
     <button className={`opt ${sel ? 'sel' : ''}`} style={dim ? { opacity: 0.4 } : undefined} onClick={onClick}>
-      <span className="ic">{icon}</span>
       <span style={{ flex: 1 }}>
         <span className="ttl" style={{ display: 'block' }}>{title}</span>
         {desc && <span className="desc" style={{ display: 'block' }}>{desc}</span>}
       </span>
-      <span className="check">✓</span>
     </button>
   );
 }
 
-/* -------------------- results (map stage) -------------------- */
-function Results({ ranked, choice, setChoice, onBack, onNext }: {
-  ranked: Destination[]; choice: Destination | null; setChoice: (d: Destination) => void; onBack: () => void; onNext: () => void;
-}) {
-  const { t, L } = useI18n();
-  const [openId, setOpenId] = useState<string | null>(null);
-  return (
-    <>
-      <div className="head"><h2>{t('results.title')}</h2><p>{t('results.pins')}</p></div>
-      <div className="body">
-        {!ranked.length && <div className="center-msg">{t('common.loading')}</div>}
-        {ranked.map((d, i) => {
-          const sel = choice?.id === d.id;
-          return (
-            <div key={d.id} className={`dcard ${sel ? 'sel' : ''}`} onClick={() => setChoice(d)}>
-              <div className="rank">{i + 1}</div>
-              <ScoreDial score={d.match?.score ?? 0} />
-              <div className="info">
-                <h4>{L(d, 'name')} <span className="sec">{L(d, 'name') === d.name_en ? d.name_tc : d.name_en}</span></h4>
-                <div className="attrs">
-                  <span>{t('d.cost')} <b>{t('common.hkd')}{d.monthly_cost.toLocaleString()}</b></span>
-                  <span>{t('d.travel')} <b>{d.travel_time_hr}{t('common.hours')}</b></span>
-                </div>
-                <button className="why" onClick={(e) => { e.stopPropagation(); setOpenId(openId === d.id ? null : d.id); }}>
-                  {t('rank.why')} {openId === d.id ? '▲' : '▼'}
-                </button>
-                {openId === d.id && d.match && <FactorBars factors={d.match.factors} />}
-              </div>
-            </div>
-          );
-        })}
-        <div className="seeded-note">{t('rank.seeded')}</div>
-      </div>
-      <div className="foot">
-        <div className="actions" style={{ margin: 0 }}>
-          <button className="btn" onClick={onBack}>←</button>
-          <button className="btn btn-primary grow" disabled={!choice} onClick={onNext}>{t('flow.continue')}</button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* -------------------- documents (map stage) -------------------- */
-function Docs({ files, setFiles, onBack, onNext }: {
-  files: File[]; setFiles: (f: File[]) => void; onBack: () => void; onNext: () => void;
-}) {
+/* -------------------- document dropzone -------------------- */
+function Dropzone({ files, setFiles }: { files: File[]; setFiles: (f: File[]) => void }) {
   const { t } = useI18n();
   const [drag, setDrag] = useState(false);
   const add = (l: FileList | null) => { if (l) setFiles([...files, ...Array.from(l)]); };
   return (
     <>
-      <div className="head"><h2>{t('docs.title')}</h2><p>{t('docs.sub')}</p></div>
-      <div className="body">
-        <label className={`dropzone ${drag ? 'drag' : ''}`}
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); add(e.dataTransfer.files); }}>
-          <div className="big">⬆️</div>
-          <div style={{ marginTop: 8 }}>{t('docs.drop')}</div>
-          <input type="file" multiple style={{ display: 'none' }} onChange={(e) => add(e.target.files)} />
-        </label>
-        {files.length === 0
-          ? <div className="muted" style={{ marginTop: 12, fontSize: 13 }}>{t('docs.none')}</div>
-          : files.map((f, i) => (
-            <div className="doc" key={i}>
-              <span>📄</span><span className="fname">{f.name}</span>
-              <span className="muted">{(f.size / 1024).toFixed(1)} KB</span>
-              <button className="x" onClick={() => setFiles(files.filter((_, j) => j !== i))}>✕</button>
-            </div>
-          ))}
-      </div>
-      <div className="foot">
-        <div className="actions" style={{ margin: 0 }}>
-          <button className="btn" onClick={onBack}>←</button>
-          <button className="btn btn-primary grow" onClick={onNext}>{t('flow.continue')}</button>
-        </div>
-      </div>
+      <label className={`dropzone ${drag ? 'drag' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); add(e.dataTransfer.files); }}>
+        <div>{t('docs.drop')}</div>
+        <input type="file" multiple style={{ display: 'none' }} onChange={(e) => add(e.target.files)} />
+      </label>
+      {files.length === 0
+        ? <div className="muted" style={{ marginTop: 12, fontSize: 13 }}>{t('docs.none')}</div>
+        : files.map((f, i) => (
+          <div className="doc" key={i}>
+            <span className="fname">{f.name}</span>
+            <span className="muted">{(f.size / 1024).toFixed(1)} KB</span>
+            <button className="x" onClick={() => setFiles(files.filter((_, j) => j !== i))}>✕</button>
+          </div>
+        ))}
     </>
   );
 }
 
-/* -------------------- review + done (map stage) -------------------- */
-function Review({ profile, choice, ranked, files, onBack }: {
-  profile: Profile; choice: Destination | null; ranked: Destination[]; files: File[]; onBack: () => void;
+/* -------------------- results + submit (map stage) -------------------- */
+function ResultsPanel({ ranked, choice, setChoice, profile, files, onBack, onExit }: {
+  ranked: Destination[]; choice: Destination | null; setChoice: (d: Destination) => void;
+  profile: Profile; files: File[]; onBack: () => void; onExit: () => void;
 }) {
-  const { t, L, lang } = useI18n();
-  const [name, setName] = useState('');
+  const { t, L } = useI18n();
+  const [openId, setOpenId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [appId, setAppId] = useState<number | null>(null);
   const [status, setStatus] = useState('submitted');
@@ -268,7 +198,6 @@ function Review({ profile, choice, ranked, files, onBack }: {
     try {
       const ordered = [choice, ...ranked.filter((d) => d.id !== choice.id)];
       const res = await api.createApplication({
-        applicant_name: name || (lang === 'en' ? 'Resident' : '居民'),
         origin_address: '', profile, destinations: ordered,
       });
       setAppId(res.id);
@@ -298,7 +227,8 @@ function Review({ profile, choice, ranked, files, onBack }: {
         </div>
         <div className="foot">
           <div className="actions" style={{ margin: 0 }}>
-            <button className="btn grow" onClick={refresh}>↻ {t('status.under_review')}</button>
+            <button className="btn" onClick={refresh}>↻ {t('status.under_review')}</button>
+            <button className="btn btn-primary grow" onClick={onExit}>{t('dash.backToList')}</button>
           </div>
         </div>
       </>
@@ -307,17 +237,38 @@ function Review({ profile, choice, ranked, files, onBack }: {
 
   return (
     <>
-      <div className="head"><h2>{t('sub.title')}</h2></div>
+      <div className="head"><h2>{t('results.title')}</h2><p>{t('results.pins')}</p></div>
       <div className="body">
-        <div style={{ marginBottom: 16 }}>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('sub.namePh')} />
-        </div>
-        <div className="kv"><span>{t('sub.firstChoice')}</span><b>{choice ? L(choice, 'name') : '–'}</b></div>
-        <div className="kv"><span>{t('results.title')}</span><b>{choice?.match ? `${Math.round(choice.match.score)}/100` : '–'}</b></div>
-        <div className="kv"><span>{t('docs.title')}</span><b>{files.length}</b></div>
-        <div className="optin" style={{ marginTop: 16 }}>♥ {t('sub.opt.in')}</div>
+        {!ranked.length && <div className="center-msg">{t('common.loading')}</div>}
+        {ranked.map((d, i) => {
+          const sel = choice?.id === d.id;
+          return (
+            <div key={d.id} className={`dcard ${sel ? 'sel' : ''}`} onClick={() => setChoice(d)}>
+              <div className="rank">{i + 1}</div>
+              <ScoreDial score={d.match?.score ?? 0} />
+              <div className="info">
+                <h4>{L(d, 'name')} <span className="sec">{L(d, 'name') === d.name_en ? d.name_tc : d.name_en}</span></h4>
+                <div className="attrs">
+                  <span>{t('d.cost')} <b>{t('common.hkd')}{d.monthly_cost.toLocaleString()}</b></span>
+                  <span>{t('d.travel')} <b>{d.travel_time_hr}{t('common.hours')}</b></span>
+                </div>
+                <button className="why" onClick={(e) => { e.stopPropagation(); setOpenId(openId === d.id ? null : d.id); }}>
+                  {t('rank.why')} {openId === d.id ? '▲' : '▼'}
+                </button>
+                {openId === d.id && d.match && <FactorBars factors={d.match.factors} />}
+              </div>
+            </div>
+          );
+        })}
+        <div className="seeded-note">{t('rank.seeded')}</div>
       </div>
       <div className="foot">
+        {choice && (
+          <div className="kv" style={{ borderBottom: 0, paddingTop: 0 }}>
+            <span>{t('sub.firstChoice')}</span>
+            <b>{L(choice, 'name')}{choice.match ? ` · ${Math.round(choice.match.score)}/100` : ''}</b>
+          </div>
+        )}
         <div className="actions" style={{ margin: 0 }}>
           <button className="btn" onClick={onBack}>←</button>
           <button className="btn btn-primary grow" disabled={submitting || !choice} onClick={submit}>
