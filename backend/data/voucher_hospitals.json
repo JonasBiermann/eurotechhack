@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "scheme": "Elderly Health Care Voucher (EHCV) Greater Bay Area Pilot Scheme",
+    "annual_voucher_hkd": 2000,
+    "reward_up_to_hkd": 500,
+    "covers": "Primary care, chronic disease management, vaccination, health screening, dental.",
+    "excludes": "Inpatient services, day surgery, prepaid healthcare packages.",
+    "total_service_points": 21,
+    "provenance": "hardcoded",
+    "sources": [
+      "https://www.hcv.gov.hk/files/pdf/EHVGBAPS_Leaflet_English_2025.pdf",
+      "https://www.info.gov.hk/gia/general/202505/02/P2025050200824.htm",
+      "https://www.bayarea.gov.hk/gbais/en/development/medical-co-operation/use-of-hong-kong-elderly-health-care-vouchers/"
+    ],
+    "as_of": "2025-05"
+  },
+  "institutions": [
+    {"city": "shenzhen", "name_en": "The University of Hong Kong-Shenzhen Hospital", "name_tc": "香港大學深圳醫院", "service_points": 2},
+    {"city": "shenzhen", "name_en": "Shenzhen Hospital of Southern Medical University", "name_tc": "南方醫科大學深圳醫院", "service_points": 1},
+    {"city": "shenzhen", "name_en": "Peking University Shenzhen Hospital", "name_tc": "北京大學深圳醫院", "service_points": 1},
+    {"city": "guangzhou", "name_en": "Guangdong Clifford Hospital", "name_tc": "廣東祈福醫院", "service_points": 1},
+    {"city": "guangzhou", "name_en": "Guangdong Provincial Hospital of Chinese Medicine", "name_tc": "廣東省中醫院", "service_points": 1},
+    {"city": "guangzhou", "name_en": "The First Affiliated Hospital, Sun Yat-sen University (incl. Nansha)", "name_tc": "中山大學附屬第一醫院（含南沙院區）", "service_points": 2},
+    {"city": "zhuhai", "name_en": "The Fifth Affiliated Hospital, Sun Yat-sen University", "name_tc": "中山大學附屬第五醫院", "service_points": 1},
+    {"city": "zhuhai", "name_en": "Zhuhai People's Hospital", "name_tc": "珠海市人民醫院", "service_points": 1},
+    {"city": "foshan", "name_en": "The First People's Hospital of Foshan", "name_tc": "佛山市第一人民醫院", "service_points": 1},
+    {"city": "foshan", "name_en": "The Eighth Affiliated Hospital of Southern Medical University", "name_tc": "南方醫科大學第八附屬醫院", "service_points": 1},
+    {"city": "huizhou", "name_en": "Huizhou Central People's Hospital", "name_tc": "惠州市中心人民醫院", "service_points": 1},
+    {"city": "zhongshan", "name_en": "Zhongshan Hospital of Traditional Chinese Medicine", "name_tc": "中山市中醫院", "service_points": 1},
+    {"city": "zhongshan", "name_en": "Zhongshan Chenxinghai Hospital of Integrated TCM", "name_tc": "中山陳星海中西醫結合醫院", "service_points": 1},
+    {"city": "jiangmen", "name_en": "Jiangmen Central Hospital", "name_tc": "江門市中心醫院", "service_points": 1},
+    {"city": "zhaoqing", "name_en": "The First People's Hospital of Zhaoqing", "name_tc": "肇慶市第一人民醫院", "service_points": 1},
+    {"city": "dongguan", "name_en": "Dongguan Tungwah Hospital", "name_tc": "東莞東華醫院", "service_points": 1},
+    {"city": "dongguan", "name_en": "New Frontier United Family Hospital", "name_tc": "新風和睦家醫院", "service_points": 1}
+  ]
+}
