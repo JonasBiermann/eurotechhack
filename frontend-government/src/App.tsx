@@ -17,8 +17,9 @@ export default function App() {
   return (
     <div className="app">
       <MapCanvas view={view} lang={lang} />
-      <GovShell crumbs={[t('nav.home'), t('nav.service'), t('nav.console')]} />
-      <GovernmentView view={view} setView={setView} />
+      <GovShell crumbs={[t('nav.home'), t('nav.gov.officers'), t('nav.gov.console')]}>
+        <GovernmentView view={view} setView={setView} />
+      </GovShell>
     </div>
   );
 }

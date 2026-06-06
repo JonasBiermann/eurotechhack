@@ -277,8 +277,15 @@ def create_application(payload: dict = Body(...), resident: dict = Depends(curre
          json.dumps(payload.get("destinations", []), ensure_ascii=False), None, None,
          resident["id"]),
     )
-    conn.commit()
     app_id = cur.lastrowid
+    _log_event(
+        conn, app_id, kind="system", author="System",
+        title_en="Application received",
+        title_tc="申請已收到",
+        body=f"Submitted by {resident['name']}.",
+        meta={"to": "submitted"},
+    )
+    conn.commit()
     conn.close()
     return {"id": app_id, "status": "started"}
 
@@ -375,10 +382,43 @@ async def upload_document(app_id: int, file: UploadFile = File(...)):
            VALUES (?,?,?,?,?,?)""",
         (app_id, file.filename, str(path), len(content), file.content_type, _now()),
     )
-    conn.commit()
     doc_id = cur.lastrowid
+    _log_event(
+        conn, app_id, kind="document", author="Resident",
+        title_en=f"Document uploaded: {file.filename}",
+        title_tc=f"已上載文件：{file.filename}",
+        meta={"document_id": doc_id, "filename": file.filename},
+    )
+    conn.commit()
     conn.close()
     return {"id": doc_id, "filename": file.filename, "size": len(content)}
+
+
+def _events_for(conn, app_id: int) -> list[dict]:
+    rows = conn.execute(
+        """SELECT id, created_at, author, kind, title_en, title_tc, body, meta_json
+             FROM case_events WHERE application_id=? ORDER BY created_at ASC, id ASC""",
+        (app_id,),
+    ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["meta"] = json.loads(d.pop("meta_json") or "{}")
+        out.append(d)
+    return out
+
+
+def _log_event(conn, app_id: int, kind: str, author: str,
+               title_en: str, title_tc: str, body: str | None = None,
+               meta: dict | None = None, created_at: str | None = None) -> int:
+    cur = conn.execute(
+        """INSERT INTO case_events
+           (application_id, created_at, author, kind, title_en, title_tc, body, meta_json)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (app_id, created_at or _now(), author, kind, title_en, title_tc, body,
+         json.dumps(meta or {}, ensure_ascii=False)),
+    )
+    return cur.lastrowid
 
 
 def _app_to_dict(row, conn) -> dict:
@@ -390,6 +430,7 @@ def _app_to_dict(row, conn) -> dict:
         (row["id"],),
     ).fetchall()
     d["documents"] = [dict(x) for x in docs]
+    d["events"] = _events_for(conn, row["id"])
     d["top_destination"] = d["destinations"][0] if d["destinations"] else None
     return d
 
@@ -426,21 +467,207 @@ def get_application(app_id: int):
     return out
 
 
+_DECISION_TITLES = {
+    "under_review": ("Marked for review", "列為審核中"),
+    "approved":     ("Application approved", "申請已批准"),
+    "rejected":     ("Application closed",  "申請已結案"),
+}
+
+
 @app.post("/api/applications/{app_id}/decision")
 def decide(app_id: int, payload: dict = Body(...)):
     decision = payload.get("decision")
     if decision not in ("under_review", "approved", "rejected"):
         raise HTTPException(400, "decision must be under_review|approved|rejected")
     conn = db.connect()
-    if not conn.execute("SELECT 1 FROM applications WHERE id=?", (app_id,)).fetchone():
+    prev = conn.execute("SELECT status FROM applications WHERE id=?", (app_id,)).fetchone()
+    if not prev:
         conn.close()
         raise HTTPException(404, "application not found")
     decided_at = _now() if decision in ("approved", "rejected") else None
+    officer = payload.get("officer") or "Officer Lam"
+    note = payload.get("note")
     conn.execute("UPDATE applications SET status=?, note=?, decided_at=? WHERE id=?",
-                 (decision, payload.get("note"), decided_at, app_id))
+                 (decision, note, decided_at, app_id))
+    title_en, title_tc = _DECISION_TITLES[decision]
+    _log_event(
+        conn, app_id, kind="status", author=officer,
+        title_en=title_en, title_tc=title_tc, body=note,
+        meta={"from": prev["status"], "to": decision},
+    )
     conn.commit()
     conn.close()
-    return {"id": app_id, "status": decision, "note": payload.get("note")}
+    return {"id": app_id, "status": decision, "note": note}
+
+
+@app.get("/api/applications/{app_id}/events")
+def list_events(app_id: int):
+    conn = db.connect()
+    if not conn.execute("SELECT 1 FROM applications WHERE id=?", (app_id,)).fetchone():
+        conn.close()
+        raise HTTPException(404, "application not found")
+    out = _events_for(conn, app_id)
+    conn.close()
+    return out
+
+
+@app.post("/api/applications/{app_id}/events")
+def add_event(app_id: int, payload: dict = Body(...)):
+    """Add a free-form case-file event (caseworker note, contact, home visit,
+    follow-up scheduled). Kind defaults to 'note'."""
+    conn = db.connect()
+    if not conn.execute("SELECT 1 FROM applications WHERE id=?", (app_id,)).fetchone():
+        conn.close()
+        raise HTTPException(404, "application not found")
+    kind = payload.get("kind") or "note"
+    if kind not in ("note", "contact", "visit", "followup", "document", "system", "status"):
+        raise HTTPException(400, "unknown event kind")
+    body = (payload.get("body") or "").strip()
+    title_en = (payload.get("title_en") or "").strip()
+    title_tc = (payload.get("title_tc") or "").strip()
+    if not (body or title_en or title_tc):
+        raise HTTPException(400, "event needs a title or body")
+    if not title_en and not title_tc:
+        # No explicit title: derive one from kind so the timeline always has a heading.
+        defaults = {
+            "note":     ("Case note",          "個案備註"),
+            "contact":  ("Contacted resident", "已聯絡居民"),
+            "visit":    ("Home visit",         "上門探訪"),
+            "followup": ("Follow-up scheduled", "已安排跟進"),
+        }
+        title_en, title_tc = defaults.get(kind, ("Update", "更新"))
+    eid = _log_event(
+        conn, app_id, kind=kind, author=payload.get("author") or "Officer Lam",
+        title_en=title_en or title_tc, title_tc=title_tc or title_en,
+        body=body or None, meta=payload.get("meta") or {},
+    )
+    conn.commit()
+    out = conn.execute(
+        """SELECT id, created_at, author, kind, title_en, title_tc, body, meta_json
+             FROM case_events WHERE id=?""", (eid,),
+    ).fetchone()
+    conn.close()
+    d = dict(out)
+    d["meta"] = json.loads(d.pop("meta_json") or "{}")
+    return d
+
+
+@app.get("/api/stats")
+def get_stats():
+    """Aggregated stats for the government analytics dashboard."""
+    conn = db.connect()
+
+    # ---- by-status counts ----
+    status_rows = conn.execute(
+        "SELECT status, COUNT(*) as n FROM applications GROUP BY status"
+    ).fetchall()
+    by_status: dict = {r["status"]: r["n"] for r in status_rows}
+    total = sum(by_status.values())
+    submitted   = by_status.get("submitted", 0)
+    under_review = by_status.get("under_review", 0)
+    approved    = by_status.get("approved", 0)
+    rejected    = by_status.get("rejected", 0)
+    decided     = approved + rejected
+
+    # ---- scan all applications once for scores / profiles ----
+    app_rows = conn.execute(
+        "SELECT destinations_json, profile_json, created_at, decided_at FROM applications"
+    ).fetchall()
+
+    scores: list = []
+    decision_days: list = []
+    dest_counts: dict = {}
+    dest_score_sums: dict = {}
+    care_counts: dict = {0: 0, 1: 0, 2: 0, 3: 0}
+    step_free_count = 0
+    incomes: list = []
+
+    for row in app_rows:
+        dests   = json.loads(row["destinations_json"] or "[]")
+        profile = json.loads(row["profile_json"]      or "{}")
+
+        if dests:
+            top   = dests[0]
+            match = top.get("match") or {}
+            if isinstance(match, dict) and "score" in match:
+                s = float(match["score"])
+                scores.append(s)
+                did = top.get("id")
+                if did:
+                    dest_counts[did] = dest_counts.get(did, 0) + 1
+                    dest_score_sums.setdefault(did, []).append(s)
+
+        if row["decided_at"] and row["created_at"]:
+            try:
+                c = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
+                d = datetime.fromisoformat(row["decided_at"].replace("Z", "+00:00"))
+                decision_days.append((d - c).total_seconds() / 86_400)
+            except Exception:
+                pass
+
+        level = int(profile.get("care_level") or 0)
+        care_counts[level] = care_counts.get(level, 0) + 1
+        if profile.get("needs_step_free"):
+            step_free_count += 1
+        if profile.get("monthly_income"):
+            incomes.append(float(profile["monthly_income"]))
+
+    # ---- destination breakdown ----
+    dest_meta = {d["id"]: (d["name_en"], d["name_tc"]) for d in DESTINATIONS}
+    by_destination = sorted(
+        [
+            {
+                "id": did,
+                "name_en": dest_meta.get(did, (did, did))[0],
+                "name_tc": dest_meta.get(did, (did, did))[1],
+                "count": count,
+                "avg_score": round(
+                    sum(dest_score_sums.get(did, [0]))
+                    / max(1, len(dest_score_sums.get(did, []))), 0
+                ),
+            }
+            for did, count in dest_counts.items()
+        ],
+        key=lambda x: (-x["count"], -x["avg_score"])
+    )
+
+    # ---- monthly volume (last 6 months, ascending) ----
+    month_rows = conn.execute(
+        """SELECT strftime('%Y-%m', created_at) as m, COUNT(*) as n
+           FROM applications GROUP BY m ORDER BY m DESC LIMIT 6"""
+    ).fetchall()
+    by_month = [{"month": r["m"], "count": r["n"]} for r in reversed(month_rows)]
+
+    # ---- case events by kind ----
+    event_rows = conn.execute(
+        "SELECT kind, COUNT(*) as n FROM case_events GROUP BY kind"
+    ).fetchall()
+    events_by_kind = {r["kind"]: r["n"] for r in event_rows}
+
+    conn.close()
+
+    return {
+        "total": total,
+        "by_status": {
+            "submitted":   submitted,
+            "under_review": under_review,
+            "approved":    approved,
+            "rejected":    rejected,
+        },
+        "units_freed":   approved,
+        "pending":       submitted + under_review,
+        "approval_rate": round(approved / decided * 100, 1) if decided > 0 else None,
+        "avg_match_score": round(sum(scores) / len(scores), 1) if scores else None,
+        "avg_days_to_decision": round(sum(decision_days) / len(decision_days), 1) if decision_days else None,
+        "by_destination": by_destination,
+        "by_care_level":  [{"level": i, "count": care_counts.get(i, 0)} for i in range(4)],
+        "step_free_count": step_free_count,
+        "step_free_pct": round(step_free_count / total * 100, 1) if total > 0 else 0,
+        "avg_income": round(sum(incomes) / len(incomes)) if incomes else None,
+        "by_month": by_month,
+        "total_events": sum(events_by_kind.values()),
+        "events_by_kind": events_by_kind,
+    }
 
 
 @app.get("/api/applications/{app_id}/documents/{doc_id}")

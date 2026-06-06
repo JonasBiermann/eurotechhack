@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
 import {
-  api, type Application, type Destination, type District, type Metric,
+  api, type Application, type CaseEvent, type CaseEventKind,
+  type Destination, type District, type Metric, type StatPin, type Stats,
 } from '../api/client';
 import type { MapState } from '../map/MapCanvas';
+import { StatsView } from './StatsView';
 
 const METRICS: Metric[] = ['age', 'density', 'nolift'];
 const GRADIENT: Record<Metric, string> = {
@@ -17,13 +19,19 @@ export function GovernmentView({ view, setView }: {
   setView: (v: MapState) => void;
 }) {
   const { t, L } = useI18n();
-  const [tab, setTab] = useState<'map' | 'requests'>('map');
+  const [tab, setTab] = useState<'map' | 'requests' | 'stats'>('map');
   const [metric, setMetric] = useState<Metric>('age');
   const [districts, setDistricts] = useState<District[]>([]);
   const [gbaDests, setGbaDests] = useState<Destination[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [statsErr, setStatsErr] = useState(false);
 
-  const [drawer, setDrawer] = useState<Application | null>(null);
+  // Detail view replaces the list in-place — no drawer overlay.
+  const [openId, setOpenId] = useState<number | null>(null);
+  const openedApp = useMemo(
+    () => apps.find((a) => a.id === openId) ?? null, [apps, openId],
+  );
 
   const pendingCount = apps.filter(
     (a) => a.status === 'submitted' || a.status === 'under_review',
@@ -33,9 +41,11 @@ export function GovernmentView({ view, setView }: {
     api.districts().then(setDistricts).catch(() => {});
     api.destinations().then(setGbaDests).catch(() => {});
     api.applications().then(setApps).catch(() => {});
+    api.stats().then(setStats).catch(() => setStatsErr(true));
   }, []);
 
   useEffect(() => {
+    if (tab === 'stats') return;
     setView({
       ...view,
       layer: 'heatmap',
@@ -44,11 +54,33 @@ export function GovernmentView({ view, setView }: {
       destinations: [], selectedDestId: null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metric, gbaDests]);
+  }, [metric, gbaDests, tab]);
+
+  useEffect(() => {
+    if (tab !== 'stats' || !stats || !gbaDests.length) return;
+    const statsPins: StatPin[] = stats.by_destination
+      .map((d) => {
+        const dest = gbaDests.find((g) => g.id === d.id);
+        if (!dest) return null;
+        return { id: d.id, name_en: d.name_en, name_tc: d.name_tc,
+          lat: dest.lat, lng: dest.lng, count: d.count, avg_score: d.avg_score };
+      })
+      .filter(Boolean) as StatPin[];
+    setView({ ...view, layer: 'stats', statsPins, gbaPins: [], destinations: [], selectedDestId: null, focus: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, stats, gbaDests]);
 
   const refreshApps = async () => {
     const a = await api.applications();
     setApps(a);
+  };
+
+  const switchTab = (next: 'map' | 'requests' | 'stats') => {
+    setTab(next);
+    if (next !== 'stats' && tab === 'stats') {
+      setView({ ...view, layer: 'heatmap', metric, gbaPins: gbaDests,
+        destinations: [], selectedDestId: null, focus: null });
+    }
   };
 
   const flyDistrict = (d: District) => setView({
@@ -60,81 +92,94 @@ export function GovernmentView({ view, setView }: {
     focus: { center: [d.lng, d.lat], zoom: 9.5 },
   });
 
+  // When a case is open, the whole panel renders the detail page.
+  if (openedApp) {
+    return (
+      <div className="gov-console-panel">
+        <CaseDetail
+          app={openedApp}
+          onBack={() => setOpenId(null)}
+          onChanged={async () => {
+            await refreshApps();
+            const fresh = await api.application(openedApp.id);
+            setApps((cur) => cur.map((a) => a.id === fresh.id ? fresh : a));
+          }}
+          flyDest={flyDest}
+        />
+      </div>
+    );
+  }
+
   return (
-    <>
-      <div className="panel panel-left panel-console">
-        <div className="console-tabs">
-          <button className={`console-tab ${tab === 'map' ? 'active' : ''}`}
-            onClick={() => setTab('map')}>
-            {t('tab.map')}
-          </button>
-          <button className={`console-tab ${tab === 'requests' ? 'active' : ''}`}
-            onClick={() => setTab('requests')}>
-            {t('tab.requests')}
-            {pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
-          </button>
-        </div>
-
-        <div className="panel-body console-body">
-          {tab === 'map' ? (
-            <>
-              <Section title={t('sec.pressure')}>
-                <p className="section-sub">{t('pressure.title')}</p>
-                <div className="seg" style={{ width: '100%' }}>
-                  {METRICS.map((m) => (
-                    <button key={m} className={metric === m ? 'active' : ''} style={{ flex: 1 }}
-                      onClick={() => setMetric(m)}>{t(`metric.${m}`)}</button>
-                  ))}
-                </div>
-                <div className="legend">
-                  <div className="unit">{t(`metric.${metric}.unit`)}</div>
-                  <div className="bar" style={{ background: GRADIENT[metric] }} />
-                  <div className="ends"><span>{t('gov.legend.low')}</span><span>{t('gov.legend.high')}</span></div>
-                </div>
-                <div className="district-strip">
-                  {districts.map((d) => (
-                    <button key={d.id} className="dchip" onClick={() => flyDistrict(d)}>
-                      <b>{L(d, 'name')}</b>
-                      <span>{d.pct_no_lift ?? '–'}% {t('stat.noLift')}</span>
-                    </button>
-                  ))}
-                </div>
-              </Section>
-
-              <Section title={t('sec.newtowns')}>
-                <p className="section-sub">{t('nt.intro')}</p>
-                <div className="nt-grid">
-                  {gbaDests.map((d) => (
-                    <button key={d.id} className="nt-card" onClick={() => flyDest(d)}>
-                      <div className="nt-head">
-                        <b>{L(d, 'name')}</b>
-                        <span className="nt-units">{t('common.hkd')}{d.monthly_cost.toLocaleString()}</span>
-                      </div>
-                      <div className="nt-meta">
-                        <span>{t('d.cost')}</span>
-                        <span>{t('d.travel')} {d.travel_time_hr}{t('common.hours')}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </Section>
-            </>
-          ) : (
-            <Section title={t('sec.requests')}>
-              <p className="section-sub">{t('req.intro')}</p>
-              <RequestsList apps={apps} onPick={setDrawer} selectedId={drawer?.id ?? null} />
-            </Section>
-          )}
-        </div>
+    <div className="gov-console-panel">
+      <div className="console-tabs">
+        <button className={`console-tab ${tab === 'map' ? 'active' : ''}`}
+          onClick={() => switchTab('map')}>
+          {t('tab.map')}
+        </button>
+        <button className={`console-tab ${tab === 'requests' ? 'active' : ''}`}
+          onClick={() => switchTab('requests')}>
+          {t('tab.requests')}
+          {pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
+        </button>
+        <button className={`console-tab ${tab === 'stats' ? 'active' : ''}`}
+          onClick={() => switchTab('stats')}>
+          {t('tab.stats')}
+        </button>
       </div>
 
-      {drawer && <DetailDrawer app={drawer} onClose={() => setDrawer(null)}
-        onDecided={async () => {
-          await refreshApps();
-          const fresh = await api.application(drawer.id);
-          setDrawer(fresh);
-        }} />}
-    </>
+      <div className="panel-body console-body">
+        {tab === 'stats' ? <StatsView stats={stats} err={statsErr} /> : tab === 'map' ? (
+          <>
+            <Section title={t('sec.pressure')}>
+              <p className="section-sub">{t('pressure.title')}</p>
+              <div className="seg" style={{ width: '100%' }}>
+                {METRICS.map((m) => (
+                  <button key={m} className={metric === m ? 'active' : ''} style={{ flex: 1 }}
+                    onClick={() => setMetric(m)}>{t(`metric.${m}`)}</button>
+                ))}
+              </div>
+              <div className="legend">
+                <div className="unit">{t(`metric.${metric}.unit`)}</div>
+                <div className="bar" style={{ background: GRADIENT[metric] }} />
+                <div className="ends"><span>{t('gov.legend.low')}</span><span>{t('gov.legend.high')}</span></div>
+              </div>
+              <div className="district-strip">
+                {districts.map((d) => (
+                  <button key={d.id} className="dchip" onClick={() => flyDistrict(d)}>
+                    <b>{L(d, 'name')}</b>
+                    <span>{d.pct_no_lift ?? '–'}% {t('stat.noLift')}</span>
+                  </button>
+                ))}
+              </div>
+            </Section>
+
+            <Section title={t('sec.newtowns')}>
+              <p className="section-sub">{t('nt.intro')}</p>
+              <div className="nt-grid">
+                {gbaDests.map((d) => (
+                  <button key={d.id} className="nt-card" onClick={() => flyDest(d)}>
+                    <div className="nt-head">
+                      <b>{L(d, 'name')}</b>
+                      <span className="nt-units">{t('common.hkd')}{d.monthly_cost.toLocaleString()}</span>
+                    </div>
+                    <div className="nt-meta">
+                      <span>{t('d.cost')}</span>
+                      <span>{t('d.travel')} {d.travel_time_hr}{t('common.hours')}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </Section>
+          </>
+        ) : (
+          <Section title={t('sec.requests')}>
+            <p className="section-sub">{t('req.intro')}</p>
+            <RequestsList apps={apps} onPick={(a) => setOpenId(a.id)} />
+          </Section>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -151,8 +196,8 @@ function Section({ title, children }: { title: string; children: any }) {
 
 type ReqFilter = 'all' | 'submitted' | 'under_review' | 'approved' | 'rejected';
 
-function RequestsList({ apps, onPick, selectedId }: {
-  apps: Application[]; onPick: (a: Application) => void; selectedId: number | null;
+function RequestsList({ apps, onPick }: {
+  apps: Application[]; onPick: (a: Application) => void;
 }) {
   const { t, lang } = useI18n();
   const [filter, setFilter] = useState<ReqFilter>('all');
@@ -204,7 +249,7 @@ function RequestsList({ apps, onPick, selectedId }: {
           const dest = top ? (lang === 'en' ? top.name_en : top.name_tc) : '–';
           return (
             <button key={a.id}
-              className={`req-row ${selectedId === a.id ? 'sel' : ''}`}
+              className="req-row"
               onClick={() => onPick(a)}>
               <div className="req-row-top">
                 <b>{a.applicant_name || `#${a.id}`}</b>
@@ -235,39 +280,88 @@ function RequestsList({ apps, onPick, selectedId }: {
   );
 }
 
-function DetailDrawer({ app, onClose, onDecided }: {
-  app: Application; onClose: () => void; onDecided: () => void;
+// ---------------------------------------------------------------- detail page
+
+function CaseDetail({ app, onBack, onChanged, flyDest }: {
+  app: Application; onBack: () => void; onChanged: () => Promise<void>;
+  flyDest: (d: Destination) => void;
 }) {
   const { t, L, lang } = useI18n();
-  const [note, setNote] = useState(app.note ?? '');
-  const [saving, setSaving] = useState(false);
+  const [decisionNote, setDecisionNote] = useState(app.note ?? '');
+  const [working, setWorking] = useState(false);
   const top = app.top_destination;
-  const decide = async (decision: string) => {
-    setSaving(true);
-    try { await api.decide(app.id, decision, note); await onDecided(); }
-    finally { setSaving(false); }
-  };
   const p = app.profile;
-  return (
-    <div className="drawer-backdrop" onClick={onClose}>
-      <div className="drawer" onClick={(e) => e.stopPropagation()}>
-        <div className="drawer-head">
-          <h2>{app.applicant_name || `#${app.id}`}</h2>
-          <span className={`badge badge-${app.status}`}>{t(`status.${app.status}`)}</span>
-          <button className="drawer-x" onClick={onClose}>×</button>
-        </div>
-        <div className="drawer-body">
-          <div className="kv"><span>{t('apps.origin')}</span><b>{app.origin_address || '–'}</b></div>
-          <div className="kv"><span>{t('apps.topChoice')}</span><b>{top ? L(top, 'name') : '–'}</b></div>
-          <div className="kv"><span>{t('p.income')}</span><b>{t('common.hkd')}{p.monthly_income?.toLocaleString() ?? '–'}{t('common.perMonth')}</b></div>
-          <div className="kv"><span>{t('p.savings')}</span><b>{t('common.hkd')}{p.savings?.toLocaleString() ?? '–'}</b></div>
-          <div className="kv"><span>{t('p.stepFree')}</span><b>{p.needs_step_free ? '✓' : '–'}</b></div>
-          <div className="kv"><span>{t('p.careLevel')}</span><b>{t(`care.${p.care_level ?? 0}`)}</b></div>
+  const initials = (app.applicant_name || `#${app.id}`)
+    .split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  const score = top?.match ? Math.round(top.match.score) : null;
+  const submittedDate = new Date(app.created_at).toLocaleDateString(
+    lang === 'en' ? 'en-GB' : 'zh-HK',
+    { day: '2-digit', month: 'short', year: 'numeric' },
+  );
 
-          {top?.match && (
-            <>
-              <div className="group-title">{t('apps.profileSummary')}</div>
-              <div className="factors">
+  const decide = async (decision: string) => {
+    setWorking(true);
+    try { await api.decide(app.id, decision, decisionNote); await onChanged(); }
+    finally { setWorking(false); }
+  };
+
+  return (
+    <>
+      <div className="case-head">
+        <button className="case-back" onClick={onBack}>
+          <span aria-hidden>←</span> {t('detail.back')}
+        </button>
+      </div>
+
+      <div className="panel-body case-body">
+        {/* SUMMARY */}
+        <div className="case-summary">
+          <div className="case-avatar">{initials || '·'}</div>
+          <div className="case-id">
+            <div className="case-name-row">
+              <h2>{app.applicant_name || `#${app.id}`}</h2>
+              <span className={`badge badge-${app.status}`}>{t(`status.${app.status}`)}</span>
+            </div>
+            <div className="case-sub">
+              #{app.id} · {t('detail.submittedOn')} {submittedDate}
+            </div>
+            <div className="case-flow">
+              <span className="cf-from" title={app.origin_address || ''}>
+                {app.origin_address || '–'}
+              </span>
+              <span className="cf-arrow">→</span>
+              <button
+                className="cf-to"
+                onClick={() => top && flyDest(top as unknown as Destination)}>
+                {top ? L(top, 'name') : '–'}
+              </button>
+            </div>
+          </div>
+          {score !== null && (
+            <div className={`case-score-dial ${score >= 75 ? 'hi' : score >= 60 ? 'mid' : 'lo'}`}>
+              <b>{score}</b>
+              <small>{t('req.match')}</small>
+            </div>
+          )}
+        </div>
+
+        {/* TIMELINE */}
+        <CaseFile app={app} onChanged={onChanged} />
+
+        {/* PROFILE & MATCH */}
+        <div className="case-section">
+          <div className="case-section-head">{t('detail.profileMatch')}</div>
+          <div className="case-section-body">
+            <div className="kv"><span>{t('p.income')}</span>
+              <b>{t('common.hkd')}{p.monthly_income?.toLocaleString() ?? '–'}{t('common.perMonth')}</b></div>
+            <div className="kv"><span>{t('p.savings')}</span>
+              <b>{t('common.hkd')}{p.savings?.toLocaleString() ?? '–'}</b></div>
+            <div className="kv"><span>{t('p.stepFree')}</span>
+              <b>{p.needs_step_free ? '✓' : '–'}</b></div>
+            <div className="kv"><span>{t('p.careLevel')}</span>
+              <b>{t(`care.${p.care_level ?? 0}`)}</b></div>
+            {top?.match && (
+              <div className="factors" style={{ marginTop: 14 }}>
                 {top.match.factors.map((f) => (
                   <div className="fbar" key={f.key}>
                     <div className="flabel">
@@ -278,26 +372,167 @@ function DetailDrawer({ app, onClose, onDecided }: {
                   </div>
                 ))}
               </div>
-            </>
-          )}
-
-          <div className="group-title">{t('apps.docs')} ({app.documents.length})</div>
-          {app.documents.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>{t('docs.none')}</div>}
-          {app.documents.map((d) => (
-            <a className="doc" key={d.id} href={`/api/applications/${app.id}/documents/${d.id}`} target="_blank" rel="noreferrer">
-              <span>📄</span><span className="fname">{d.filename}</span>
-              <span style={{ color: 'var(--muted)' }}>{(d.size / 1024).toFixed(1)} KB</span>
-            </a>
-          ))}
-
-          <div className="group-title">{t('apps.decision')}</div>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('apps.notePh')} />
-          <div className="btn-row" style={{ marginTop: 12 }}>
-            <button className="btn grow" disabled={saving} onClick={() => decide('under_review')}>{t('apps.review')}</button>
-            <button className="btn btn-danger" disabled={saving} onClick={() => decide('rejected')}>{t('apps.reject')}</button>
-            <button className="btn btn-primary" disabled={saving} onClick={() => decide('approved')}>{t('apps.approve')}</button>
+            )}
           </div>
         </div>
+
+        {/* DOCUMENTS */}
+        <div className="case-section">
+          <div className="case-section-head">
+            {t('detail.docs')} <span className="case-count">{app.documents.length}</span>
+          </div>
+          <div className="case-section-body">
+            {app.documents.length === 0
+              ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>{t('docs.none')}</div>
+              : app.documents.map((d) => (
+                <a className="doc" key={d.id} target="_blank" rel="noreferrer"
+                  href={`/api/applications/${app.id}/documents/${d.id}`}>
+                  <span>📄</span>
+                  <span className="fname">{d.filename}</span>
+                  <span style={{ color: 'var(--muted)' }}>{(d.size / 1024).toFixed(1)} KB</span>
+                </a>
+              ))}
+          </div>
+        </div>
+
+        <div style={{ height: 90 }} />
+      </div>
+
+      {/* STICKY ACTION BAR */}
+      <div className="case-actionbar">
+        <input
+          className="case-note-inline"
+          type="text"
+          value={decisionNote}
+          onChange={(e) => setDecisionNote(e.target.value)}
+          placeholder={t('apps.notePh')}
+        />
+        <div className="case-action-btns">
+          <button className="btn" disabled={working} onClick={() => decide('under_review')}>
+            {t('apps.review')}
+          </button>
+          <button className="btn btn-danger" disabled={working} onClick={() => decide('rejected')}>
+            {t('apps.reject')}
+          </button>
+          <button className="btn btn-primary" disabled={working} onClick={() => decide('approved')}>
+            {t('apps.approve')}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- timeline
+
+const KIND_ICON: Record<CaseEventKind, string> = {
+  note: '📝', contact: '📞', visit: '🏠', followup: '🔔',
+  document: '📄', system: '⚙️', status: '🔁',
+};
+
+function relativeTime(iso: string, t: (k: string) => string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return t('tl.justNow');
+  if (m < 60) return `${m} ${t('tl.minAgo')}`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}${t('tl.hourAgo')}`;
+  const d = Math.floor(h / 24);
+  return `${d}${t('tl.dayAgo')}`;
+}
+
+function CaseFile({ app, onChanged }: {
+  app: Application; onChanged: () => Promise<void>;
+}) {
+  const { t, lang } = useI18n();
+  const [kind, setKind] = useState<CaseEventKind>('note');
+  const [body, setBody] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const COMPOSE_KINDS: CaseEventKind[] = ['note', 'contact', 'visit', 'followup'];
+
+  const events = useMemo(
+    () => [...(app.events ?? [])].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    ),
+    [app.events],
+  );
+
+  const submit = async () => {
+    const text = body.trim();
+    if (!text) return;
+    setSaving(true);
+    try {
+      await api.addEvent(app.id, { kind, body: text });
+      setBody('');
+      await onChanged();
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="case-section case-section-prominent">
+      <div className="case-section-head">
+        {t('detail.casefile')} <span className="case-count">{events.length}</span>
+      </div>
+      <div className="case-section-body">
+        <p className="section-sub" style={{ marginBottom: 12 }}>{t('tl.intro')}</p>
+
+        {/* compose */}
+        <div className="tl-compose">
+          <div className="tl-kind-row">
+            {COMPOSE_KINDS.map((k) => (
+              <button key={k} type="button"
+                className={`tl-kind-chip ${kind === k ? 'on' : ''}`}
+                onClick={() => setKind(k)}>
+                <span aria-hidden>{KIND_ICON[k]}</span>
+                {t(`tl.kind.${k}`)}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={t('tl.compose.ph')}
+            rows={2}
+          />
+          <div className="tl-compose-actions">
+            <button className="btn btn-primary"
+              onClick={submit}
+              disabled={saving || !body.trim()}>
+              {saving ? t('tl.saving') : t('tl.save')}
+            </button>
+          </div>
+        </div>
+
+        {/* timeline */}
+        {events.length === 0 ? (
+          <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 12 }}>
+            {t('tl.empty')}
+          </div>
+        ) : (
+          <ul className="tl-list">
+            {events.map((e: CaseEvent) => (
+              <li key={e.id} className={`tl-item tl-${e.kind}`}>
+                <div className="tl-dot" aria-hidden>{KIND_ICON[e.kind]}</div>
+                <div className="tl-card">
+                  <div className="tl-card-head">
+                    <span className="tl-title">
+                      {lang === 'en' ? e.title_en : e.title_tc}
+                    </span>
+                    <span className="tl-time" title={new Date(e.created_at).toLocaleString()}>
+                      {relativeTime(e.created_at, t)}
+                    </span>
+                  </div>
+                  {e.body && <p className="tl-body">{e.body}</p>}
+                  <div className="tl-meta">
+                    <span className={`tl-tag tl-tag-${e.kind}`}>{t(`tl.kind.${e.kind}`)}</span>
+                    <span className="tl-author">{e.author}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

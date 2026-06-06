@@ -48,6 +48,20 @@ CREATE TABLE IF NOT EXISTS documents (
   FOREIGN KEY (application_id) REFERENCES applications(id)
 );
 
+CREATE TABLE IF NOT EXISTS case_events (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  application_id INTEGER,
+  created_at     TEXT,
+  author         TEXT,             -- e.g. "Officer Lam", "System", "Resident"
+  kind           TEXT,             -- note | status | contact | visit | document | system | followup
+  title_en       TEXT,
+  title_tc       TEXT,
+  body           TEXT,             -- free-form, bilingual fallback / officer-typed
+  meta_json      TEXT,             -- {"from":"submitted","to":"under_review"} etc.
+  FOREIGN KEY (application_id) REFERENCES applications(id)
+);
+CREATE INDEX IF NOT EXISTS idx_evt_app ON case_events(application_id, created_at);
+
 CREATE TABLE IF NOT EXISTS residents (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   hkid            TEXT UNIQUE,     -- normalized upper-case, e.g. A123456(7)

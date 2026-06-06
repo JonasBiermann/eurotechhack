@@ -47,11 +47,47 @@ export interface DocMeta {
   id: number; filename: string; size: number; content_type: string; uploaded_at: string;
 }
 
+export type CaseEventKind = 'note' | 'contact' | 'visit' | 'followup'
+  | 'document' | 'system' | 'status';
+
+export interface CaseEvent {
+  id: number; created_at: string; author: string;
+  kind: CaseEventKind;
+  title_en: string; title_tc: string;
+  body: string | null;
+  meta: Record<string, unknown>;
+}
+
 export interface Application {
   id: number; created_at: string; status: string;
   applicant_name: string; origin_address: string;
   profile: Profile; destinations: Destination[]; documents: DocMeta[];
+  events: CaseEvent[];
   top_destination: Destination | null; note: string | null; decided_at: string | null;
+}
+
+export interface DestStat {
+  id: string; name_en: string; name_tc: string; count: number; avg_score: number;
+}
+export interface CareLevelStat { level: number; count: number; }
+export interface MonthStat { month: string; count: number; }
+
+export interface Stats {
+  total: number;
+  by_status: { submitted: number; under_review: number; approved: number; rejected: number; };
+  units_freed: number;
+  pending: number;
+  approval_rate: number | null;
+  avg_match_score: number | null;
+  avg_days_to_decision: number | null;
+  by_destination: DestStat[];
+  by_care_level: CareLevelStat[];
+  step_free_count: number;
+  step_free_pct: number;
+  avg_income: number | null;
+  by_month: MonthStat[];
+  total_events: number;
+  events_by_kind: Partial<Record<CaseEventKind, number>>;
 }
 
 export type Metric = 'age' | 'density' | 'nolift';
@@ -94,4 +130,10 @@ export const api = {
   application: (id: number) => jget<Application>(`/api/applications/${id}`),
   decide: (id: number, decision: string, note: string) =>
     jpost<Application>(`/api/applications/${id}/decision`, { decision, note }),
+  events: (id: number) => jget<CaseEvent[]>(`/api/applications/${id}/events`),
+  stats: () => jget<Stats>('/api/stats'),
+  addEvent: (id: number, payload: {
+    kind: CaseEventKind; body?: string; title_en?: string; title_tc?: string;
+    author?: string;
+  }) => jpost<CaseEvent>(`/api/applications/${id}/events`, payload),
 };

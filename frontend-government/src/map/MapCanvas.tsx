@@ -1,24 +1,25 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { api, type Destination, type Metric } from '../api/client';
+import { api, type Destination, type Metric, type StatPin } from '../api/client';
 import type { Lang } from '../i18n/dict';
 
 export interface MapState {
-  layer: 'heatmap' | 'destinations' | 'none';
+  layer: 'heatmap' | 'destinations' | 'stats' | 'none';
   metric: Metric;
   origin: { lng: number; lat: number; label: string } | null;
   footprintsBbox: string | null;
   destinations: Destination[];
   selectedDestId: string | null;
   focus: { center: [number, number]; zoom: number } | null;
-  // gov console: persistent GBA destination inventory (always-on informational pins)
   gbaPins?: Destination[];
+  statsPins?: StatPin[];
 }
 
 const STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
-// Wider bounds so both urban core and new-town areas fit at first load.
 const HK_BOUNDS: [number, number, number, number] = [113.94, 22.21, 114.31, 22.57];
+// Covers all GBA destination cities (Shenzhen → Foshan/Huizhou, including HK)
+const GBA_BOUNDS: [number, number, number, number] = [112.85, 22.1, 114.65, 23.25];
 
 const RAMPS: Record<Metric, [number, string][]> = {
   age: [[20, '#0ea5a4'], [35, '#fbbf24'], [50, '#f97316'], [72, '#ef4444']],
@@ -103,6 +104,52 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
     removeLayer('gba-ring'); removeLayer('gba-dot'); removeLayer('gba-label'); removeSource('gba');
   }
 
+  function applyStatPins(pins: StatPin[]) {
+    const m = map.current!;
+    const scoreRamp: any[] = ['interpolate', ['linear'], ['get', 'avg_score'],
+      50, '#f87171', 65, '#fbbf24', 75, '#34d399', 88, '#2dd4bf'];
+    const fc: any = {
+      type: 'FeatureCollection',
+      features: pins.map((p) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+        properties: {
+          id: p.id,
+          name: lang === 'en' ? p.name_en : p.name_tc,
+          count: p.count,
+          avg_score: p.avg_score,
+        },
+      })),
+    };
+    if (m.getSource('stat-pins')) (m.getSource('stat-pins') as any).setData(fc);
+    else m.addSource('stat-pins', { type: 'geojson', data: fc });
+
+    if (!m.getLayer('stat-halo')) {
+      m.addLayer({ type: 'circle', id: 'stat-halo', source: 'stat-pins', paint: {
+        'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 20, 4, 38],
+        'circle-color': scoreRamp, 'circle-opacity': 0.13,
+      }});
+      m.addLayer({ type: 'circle', id: 'stat-dot', source: 'stat-pins', paint: {
+        'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 11, 4, 22],
+        'circle-color': scoreRamp,
+        'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5,
+      }});
+      m.addLayer({ type: 'symbol', id: 'stat-count', source: 'stat-pins', layout: {
+        'text-field': ['to-string', ['get', 'count']],
+        'text-size': 13, 'text-font': ['Open Sans Bold'], 'text-anchor': 'center',
+      }, paint: { 'text-color': '#ffffff' }});
+      m.addLayer({ type: 'symbol', id: 'stat-label', source: 'stat-pins', layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 12, 'text-offset': [0, 2.4], 'text-anchor': 'top',
+        'text-font': ['Open Sans Bold'],
+      }, paint: { 'text-color': '#1d2733', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }});
+    }
+  }
+  function clearStatPins() {
+    ['stat-halo', 'stat-dot', 'stat-count', 'stat-label'].forEach(removeLayer);
+    removeSource('stat-pins');
+  }
+
   async function apply() {
     const m = map.current;
     if (!m || !ready.current) return;
@@ -159,8 +206,15 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
       removeLayer('dest-halo'); removeLayer('dest-pt'); removeLayer('dest-label'); removeSource('dests');
     }
 
-    // ---- GBA destination inventory (always-on informational layer) ----
-    if (view.gbaPins && view.gbaPins.length) applyGbaPins(view.gbaPins);
+    // ---- stats pins (GBA city bubbles sized by applicant count) ----
+    if (view.layer === 'stats') {
+      if (view.statsPins?.length) applyStatPins(view.statsPins);
+    } else {
+      clearStatPins();
+    }
+
+    // ---- GBA destination inventory — hidden when stats pins are showing ----
+    if (view.layer !== 'stats' && view.gbaPins && view.gbaPins.length) applyGbaPins(view.gbaPins);
     else clearGbaPins();
 
     // ---- footprints (resident building context) ----
@@ -206,6 +260,8 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
         m.fitBounds(b, { padding: 110, duration: 1000 });
       } else if (view.layer === 'heatmap') {
         m.fitBounds(HK_BOUNDS, { padding: 80, duration: 800 });
+      } else if (view.layer === 'stats') {
+        m.fitBounds(GBA_BOUNDS, { padding: 60, duration: 1000 });
       }
     }
     prevLayer.current = view.layer;
