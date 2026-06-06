@@ -9,25 +9,14 @@ const DEFAULT_VIEW: MapState = {
 };
 
 export default function App() {
-  const { t, lang, toggle } = useI18n();
+  const { lang } = useI18n();
   const [view, setView] = useState<MapState>(DEFAULT_VIEW);
 
+  // The map is always mounted; the flow covers it for the question steps
+  // and reveals it (with city pins) once the resident reaches the results.
   return (
-    <div className="app resident">
+    <div className="app">
       <MapCanvas view={view} lang={lang} />
-      <header className="app-header">
-        <div className="brand">
-          <div className="logo" />
-          <b>{t('app.title')}</b>
-          <small>{t('app.tagline')}</small>
-        </div>
-        <div className="header-spacer" />
-        <span style={{
-          padding: '7px 14px', borderRadius: 11, fontWeight: 700, fontSize: 13,
-          color: '#04201c', background: 'linear-gradient(135deg,#2dd4bf,#7be3d3)',
-        }}>{t('mode.resident')}</span>
-        <button className="lang-btn" onClick={toggle} title="EN / 繁體中文">{t('lang.name')}</button>
-      </header>
       <ResidentWizard setView={setView} />
     </div>
   );

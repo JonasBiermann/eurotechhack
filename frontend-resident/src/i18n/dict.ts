@@ -141,4 +141,38 @@ export const DICT: Record<string, Entry> = {
   'sub.another': { en: 'Start another', zh: '再次申請' },
   'sub.opt.in': { en: 'This application is entirely voluntary and resident-initiated.',
                   zh: '此申請完全自願，由居民主動提出。' },
+
+  // ---- new step-by-step flow ----
+  'flow.start': { en: 'Start', zh: '開始' },
+  'flow.continue': { en: 'Continue', zh: '繼續' },
+  'flow.step': { en: 'Step', zh: '步驟' },
+  'flow.intro.title': { en: 'Find a home that fits your life', zh: '尋找適合你生活的居所' },
+  'flow.intro.sub': { en: "Answer three quick questions and we'll match you to Greater Bay Area cities — voluntarily, at your own pace.",
+                      zh: '回答三條簡短問題，我們便為你配對大灣區城市 — 完全自願，由你話事。' },
+
+  'q.stepfree.title': { en: 'Do you need step-free access?', zh: '你需要無障礙通道嗎？' },
+  'q.stepfree.sub': { en: 'A home with a lift and no stairs to climb.', zh: '有升降機、無需爬樓梯的居所。' },
+  'opt.yes': { en: 'Yes, I need it', zh: '需要' },
+  'opt.yes.d': { en: 'Lift / no stairs', zh: '有升降機／無樓梯' },
+  'opt.no': { en: 'No, stairs are fine', zh: '不需要' },
+  'opt.no.d': { en: 'I can manage stairs', zh: '我能應付樓梯' },
+
+  'q.care.title': { en: 'How much daily care do you need?', zh: '你需要多少日常照顧？' },
+  'q.care.sub': { en: 'Helps us match healthcare and care homes.', zh: '有助配對醫療及安老服務。' },
+  'care.0.d': { en: 'Fully independent', zh: '完全自理' },
+  'care.1.d': { en: 'A little help', zh: '少許協助' },
+  'care.2.d': { en: 'Regular help', zh: '經常協助' },
+  'care.3.d': { en: 'Daily nursing', zh: '每日護理' },
+
+  'q.prio.title': { en: 'What matters most to you?', zh: '你最重視甚麼？' },
+  'q.prio.sub': { en: 'Pick up to two.', zh: '最多選兩項。' },
+  'prio.family': { en: 'Close to family', zh: '親近家人' },
+  'prio.cost': { en: 'Low cost of living', zh: '生活費低廉' },
+  'prio.health': { en: 'Good healthcare', zh: '醫療完善' },
+  'prio.nature': { en: 'Nature & quiet', zh: '自然寧靜' },
+  'prio.community': { en: 'Familiar community', zh: '熟悉社區' },
+
+  'results.title': { en: 'Your matched cities', zh: '為你配對的城市' },
+  'results.sub': { en: 'Ranked by your Match Score — pick your first choice.', zh: '按配對分數排序 — 請選擇首選。' },
+  'results.pins': { en: 'Each pin is a city; bigger means a better match.', zh: '每個標記代表一個城市，越大代表越合適。' },
 };

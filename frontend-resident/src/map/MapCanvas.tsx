@@ -14,7 +14,7 @@ export interface MapState {
   focus: { center: [number, number]; zoom: number } | null;
 }
 
-const STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+const STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 const HK_BOUNDS: [number, number, number, number] = [114.14, 22.255, 114.255, 22.355];
 
 // metric -> color interpolate stops on properties.value
@@ -119,7 +119,7 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
         m.addLayer({ type: 'symbol', id: 'dest-label', source: 'dests',
           layout: { 'text-field': ['get', 'name'], 'text-size': 13, 'text-offset': [0, 1.6],
             'text-anchor': 'top', 'text-font': ['Open Sans Bold'] },
-          paint: { 'text-color': '#eef4fb', 'text-halo-color': '#060912', 'text-halo-width': 1.4 } });
+          paint: { 'text-color': '#161b26', 'text-halo-color': '#ffffff', 'text-halo-width': 1.8 } });
       }
     } else {
       removeLayer('dest-halo'); removeLayer('dest-pt'); removeLayer('dest-label'); removeSource('dests');

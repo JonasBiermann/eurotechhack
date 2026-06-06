@@ -1,5 +1,5 @@
 import ReactDOM from 'react-dom/client';
-import './styles/glass.css';
+import './styles/theme.css';
 import { LanguageProvider } from './i18n/LanguageProvider';
 import App from './App';
 
