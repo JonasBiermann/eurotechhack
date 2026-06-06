@@ -465,6 +465,124 @@ def add_event(app_id: int, payload: dict = Body(...)):
     return d
 
 
+@app.get("/api/stats")
+def get_stats():
+    """Aggregated stats for the government analytics dashboard."""
+    conn = db.connect()
+
+    # ---- by-status counts ----
+    status_rows = conn.execute(
+        "SELECT status, COUNT(*) as n FROM applications GROUP BY status"
+    ).fetchall()
+    by_status: dict = {r["status"]: r["n"] for r in status_rows}
+    total = sum(by_status.values())
+    submitted   = by_status.get("submitted", 0)
+    under_review = by_status.get("under_review", 0)
+    approved    = by_status.get("approved", 0)
+    rejected    = by_status.get("rejected", 0)
+    decided     = approved + rejected
+
+    # ---- scan all applications once for scores / profiles ----
+    app_rows = conn.execute(
+        "SELECT destinations_json, profile_json, created_at, decided_at FROM applications"
+    ).fetchall()
+
+    scores: list = []
+    decision_days: list = []
+    dest_counts: dict = {}
+    dest_score_sums: dict = {}
+    care_counts: dict = {0: 0, 1: 0, 2: 0, 3: 0}
+    step_free_count = 0
+    incomes: list = []
+
+    for row in app_rows:
+        dests   = json.loads(row["destinations_json"] or "[]")
+        profile = json.loads(row["profile_json"]      or "{}")
+
+        if dests:
+            top   = dests[0]
+            match = top.get("match") or {}
+            if isinstance(match, dict) and "score" in match:
+                s = float(match["score"])
+                scores.append(s)
+                did = top.get("id")
+                if did:
+                    dest_counts[did] = dest_counts.get(did, 0) + 1
+                    dest_score_sums.setdefault(did, []).append(s)
+
+        if row["decided_at"] and row["created_at"]:
+            try:
+                c = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
+                d = datetime.fromisoformat(row["decided_at"].replace("Z", "+00:00"))
+                decision_days.append((d - c).total_seconds() / 86_400)
+            except Exception:
+                pass
+
+        level = int(profile.get("care_level") or 0)
+        care_counts[level] = care_counts.get(level, 0) + 1
+        if profile.get("needs_step_free"):
+            step_free_count += 1
+        if profile.get("monthly_income"):
+            incomes.append(float(profile["monthly_income"]))
+
+    # ---- destination breakdown ----
+    dest_meta = {d["id"]: (d["name_en"], d["name_tc"]) for d in DESTINATIONS}
+    by_destination = sorted(
+        [
+            {
+                "id": did,
+                "name_en": dest_meta.get(did, (did, did))[0],
+                "name_tc": dest_meta.get(did, (did, did))[1],
+                "count": count,
+                "avg_score": round(
+                    sum(dest_score_sums.get(did, [0]))
+                    / max(1, len(dest_score_sums.get(did, []))), 0
+                ),
+            }
+            for did, count in dest_counts.items()
+        ],
+        key=lambda x: (-x["count"], -x["avg_score"])
+    )
+
+    # ---- monthly volume (last 6 months, ascending) ----
+    month_rows = conn.execute(
+        """SELECT strftime('%Y-%m', created_at) as m, COUNT(*) as n
+           FROM applications GROUP BY m ORDER BY m DESC LIMIT 6"""
+    ).fetchall()
+    by_month = [{"month": r["m"], "count": r["n"]} for r in reversed(month_rows)]
+
+    # ---- case events by kind ----
+    event_rows = conn.execute(
+        "SELECT kind, COUNT(*) as n FROM case_events GROUP BY kind"
+    ).fetchall()
+    events_by_kind = {r["kind"]: r["n"] for r in event_rows}
+
+    conn.close()
+
+    return {
+        "total": total,
+        "by_status": {
+            "submitted":   submitted,
+            "under_review": under_review,
+            "approved":    approved,
+            "rejected":    rejected,
+        },
+        "units_freed":   approved,
+        "pending":       submitted + under_review,
+        "approval_rate": round(approved / decided * 100, 1) if decided > 0 else None,
+        "avg_match_score": round(sum(scores) / len(scores), 1) if scores else None,
+        "avg_days_to_decision": round(sum(decision_days) / len(decision_days), 1) if decision_days else None,
+        "by_destination": by_destination,
+        "by_care_level":  [{"level": i, "count": care_counts.get(i, 0)} for i in range(4)],
+        "step_free_count": step_free_count,
+        "step_free_pct": round(step_free_count / total * 100, 1) if total > 0 else 0,
+        "avg_income": round(sum(incomes) / len(incomes)) if incomes else None,
+        "by_month": by_month,
+        "total_events": sum(events_by_kind.values()),
+        "events_by_kind": events_by_kind,
+    }
+
+
 @app.get("/api/applications/{app_id}/documents/{doc_id}")
 def download_document(app_id: int, doc_id: int):
     conn = db.connect()

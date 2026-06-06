@@ -224,4 +224,26 @@ export const DICT: Record<string, Entry> = {
   'tl.dayAgo':     { en: 'd ago',      zh: '日前' },
 
   'req.openCase':  { en: 'Open case',  zh: '開啟個案' },
+
+  // ---- Statistics dashboard ----
+  'tab.stats':              { en: 'Statistics',              zh: '統計' },
+  'stats.kpi.total':        { en: 'Applications',            zh: '申請總數' },
+  'stats.kpi.freed':        { en: 'Units freed',             zh: '已釋放單位' },
+  'stats.kpi.freed.sub':    { en: 'HK public housing',       zh: '香港公屋' },
+  'stats.kpi.score':        { en: 'Avg match',               zh: '平均配對' },
+  'stats.kpi.speed':        { en: 'Days to decide',          zh: '平均審批天數' },
+  'stats.kpi.rate':         { en: 'Approval rate',           zh: '批准率' },
+  'stats.pipeline.title':   { en: 'Application pipeline',    zh: '申請流程' },
+  'stats.pipeline.total':   { en: 'total',                   zh: '宗' },
+  'stats.dest.title':       { en: 'GBA destinations',        zh: '大灣區目的地' },
+  'stats.dest.sub':         { en: 'Applications per city · avg match score',
+                              zh: '各城市申請數 · 平均配對分數' },
+  'stats.care.title':       { en: 'Resident profiles',       zh: '居民概況' },
+  'stats.care.dist':        { en: 'Care level distribution', zh: '照護程度分布' },
+  'stats.stepfree.label':   { en: 'Need step-free access',   zh: '需要無障礙通道' },
+  'stats.avgincome.label':  { en: 'Avg monthly income',      zh: '平均每月收入' },
+  'stats.monthly.title':    { en: 'Monthly volume',          zh: '每月申請量' },
+  'stats.activity.title':   { en: 'Case file activity',      zh: '個案檔案活動' },
+  'stats.activity.total':   { en: 'events logged',           zh: '筆紀錄' },
+  'stats.nodata':           { en: 'No applications yet.',    zh: '暫無申請資料。' },
 };

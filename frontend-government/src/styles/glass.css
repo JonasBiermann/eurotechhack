@@ -528,3 +528,183 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow);
 @media (max-width: 1350px) {
   .gov-console-panel { width: 440px; }
 }
+
+/* ================================================================
+   Statistics dashboard
+   ================================================================ */
+
+/* ---- KPI hero row ---- */
+.kpi-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 12px;
+}
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 13px 8px 11px;
+  text-align: center; display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+}
+.kpi-freed {
+  background: var(--accent-soft);
+  border-color: rgba(0, 115, 108, 0.28);
+  border-top: 3px solid var(--accent);
+}
+.kpi-freed-num {
+  font-size: 32px; font-weight: 900; line-height: 1; color: var(--accent-press);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-num {
+  font-size: 26px; font-weight: 900; line-height: 1; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-num .kpi-unit { font-size: 14px; font-weight: 700; color: var(--muted); margin-left: 1px; }
+.kpi-score-hi  { color: var(--ok); }
+.kpi-score-mid { color: var(--amber); }
+.kpi-score-lo  { color: var(--bad); }
+.kpi-lbl {
+  font-size: 10px; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+.kpi-sub { font-size: 10px; color: var(--muted-2); }
+
+/* ---- housing impact banner ---- */
+.impact-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(135deg, #e6f4f3 0%, #f0f7f6 100%);
+  border: 1px solid rgba(0, 115, 108, 0.22);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 12px;
+}
+.impact-icon { font-size: 26px; flex: none; line-height: 1; }
+.impact-body { min-width: 0; }
+.impact-headline { font-size: 13.5px; font-weight: 700; color: var(--ink); line-height: 1.35; }
+.impact-headline b { color: var(--accent-press); font-size: 17px; }
+.impact-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+/* ---- section wrappers ---- */
+.stats-section {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); margin-bottom: 12px; overflow: hidden;
+}
+.stats-section-head {
+  padding: 9px 14px; font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--muted);
+  background: var(--band); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.stats-section-total {
+  font-size: 10.5px; font-weight: 700; color: var(--muted-2);
+  text-transform: none; letter-spacing: 0;
+}
+.stats-section-body { padding: 12px 14px 14px; }
+.stats-sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+
+/* ---- pipeline funnel ---- */
+.pipeline { display: flex; flex-direction: column; gap: 7px; }
+.pipe-row { display: flex; align-items: center; gap: 8px; }
+.pipe-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.pipe-dot-submitted    { background: #3b52d6; }
+.pipe-dot-under_review { background: var(--amber); }
+.pipe-dot-approved     { background: var(--ok); }
+.pipe-dot-rejected     { background: var(--bad); }
+.pipe-label { font-size: 12px; font-weight: 600; color: var(--muted); min-width: 76px; flex: none; }
+.pipe-track { flex: 1; height: 11px; background: var(--band); border-radius: 3px; overflow: hidden; }
+.pipe-fill { height: 100%; border-radius: 3px; }
+.pipe-fill-submitted    { background: #3b52d6; }
+.pipe-fill-under_review { background: var(--amber); }
+.pipe-fill-approved     { background: var(--ok); }
+.pipe-fill-rejected     { background: var(--bad); }
+.pipe-count {
+  font-size: 12px; font-weight: 800; color: var(--ink);
+  min-width: 16px; text-align: right; flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.pipe-divider { border: 0; border-top: 1px dashed var(--line); margin: 2px 0; }
+
+/* ---- destination chart ---- */
+.dest-chart { display: flex; flex-direction: column; gap: 8px; }
+.dest-row { display: flex; align-items: center; gap: 8px; }
+.dest-name {
+  font-size: 12.5px; font-weight: 700; color: var(--ink);
+  min-width: 76px; flex: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dest-track { flex: 1; height: 10px; background: var(--band); border-radius: 3px; overflow: hidden; }
+.dest-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+.dest-count {
+  font-size: 12px; font-weight: 800; color: var(--ink);
+  min-width: 14px; text-align: right; flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.dest-score {
+  font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 3px;
+  flex: none; min-width: 34px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.dest-score.hi  { background: #e0f5ea; color: var(--ok); }
+.dest-score.mid { background: #fdf0db; color: var(--amber); }
+.dest-score.lo  { background: #fde7e9; color: var(--bad); }
+
+/* ---- care level chart ---- */
+.care-chart { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.care-row { display: flex; align-items: center; gap: 8px; }
+.care-lbl { font-size: 12px; font-weight: 600; color: var(--muted); min-width: 60px; flex: none; }
+.care-track { flex: 1; height: 10px; background: var(--band); border-radius: 3px; overflow: hidden; }
+.care-fill   { height: 100%; border-radius: 3px; }
+.care-fill-0 { background: #94a3b8; }
+.care-fill-1 { background: #60a5fa; }
+.care-fill-2 { background: var(--amber); }
+.care-fill-3 { background: var(--bad); }
+.care-right { display: flex; gap: 5px; align-items: baseline; flex: none; }
+.care-count { font-size: 12px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.care-pct   { font-size: 10.5px; color: var(--muted-2); min-width: 30px; text-align: right; }
+
+/* ---- stat pill (step-free, avg income) ---- */
+.stat-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--band); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 9px 12px; margin-top: 8px;
+}
+.stat-pill-label { font-size: 12px; color: var(--muted); flex: 1; white-space: nowrap; }
+.stat-pill-track { flex: 1.5; height: 7px; background: #dde4ed; border-radius: 3px; overflow: hidden; }
+.stat-pill-fill  { height: 100%; border-radius: 3px; background: var(--accent); }
+.stat-pill-value { font-size: 12px; font-weight: 800; color: var(--ink); flex: none; white-space: nowrap; }
+.stat-pill-value-solo { margin-left: auto; }
+
+/* ---- monthly bar chart ---- */
+.month-chart {
+  display: flex; align-items: flex-end; justify-content: flex-start;
+  gap: 6px; padding-bottom: 26px; position: relative; min-height: 90px;
+}
+.month-chart::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 26px;
+  height: 1px; background: var(--line);
+}
+.month-col {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; flex: 1; max-width: 52px;
+}
+.month-bar {
+  width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); min-height: 3px;
+  max-height: 44px;
+}
+.month-label { font-size: 10.5px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+.month-count { font-size: 11px; color: var(--ink); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ---- case activity ---- */
+.activity-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.activity-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 11px; border-radius: var(--radius-sm);
+  background: var(--band); border: 1px solid var(--line);
+}
+.activity-chip-note     { border-left: 2px solid #3b52d6; }
+.activity-chip-contact  { border-left: 2px solid var(--amber); }
+.activity-chip-visit    { border-left: 2px solid var(--ok); }
+.activity-chip-followup { border-left: 2px solid var(--accent); }
+.activity-chip-status   { border-left: 2px solid var(--accent); }
+.activity-chip-document { border-left: 2px solid var(--muted-2); }
+.activity-chip-system   { border-left: 2px solid var(--line); }
+.activity-icon { font-size: 13px; }
+.activity-count { font-size: 15px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
+.activity-lbl { font-size: 11px; color: var(--muted); font-weight: 600; }

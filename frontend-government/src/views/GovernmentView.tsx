@@ -5,6 +5,7 @@ import {
   type Destination, type District, type Metric,
 } from '../api/client';
 import type { MapState } from '../map/MapCanvas';
+import { StatsView } from './StatsView';
 
 const METRICS: Metric[] = ['age', 'density', 'nolift'];
 const GRADIENT: Record<Metric, string> = {
@@ -18,7 +19,7 @@ export function GovernmentView({ view, setView }: {
   setView: (v: MapState) => void;
 }) {
   const { t, L } = useI18n();
-  const [tab, setTab] = useState<'map' | 'requests'>('map');
+  const [tab, setTab] = useState<'map' | 'requests' | 'stats'>('map');
   const [metric, setMetric] = useState<Metric>('age');
   const [districts, setDistricts] = useState<District[]>([]);
   const [gbaDests, setGbaDests] = useState<Destination[]>([]);
@@ -95,10 +96,14 @@ export function GovernmentView({ view, setView }: {
           {t('tab.requests')}
           {pendingCount > 0 && <span className="tab-badge">{pendingCount}</span>}
         </button>
+        <button className={`console-tab ${tab === 'stats' ? 'active' : ''}`}
+          onClick={() => setTab('stats')}>
+          {t('tab.stats')}
+        </button>
       </div>
 
       <div className="panel-body console-body">
-        {tab === 'map' ? (
+        {tab === 'stats' ? <StatsView /> : tab === 'map' ? (
           <>
             <Section title={t('sec.pressure')}>
               <p className="section-sub">{t('pressure.title')}</p>

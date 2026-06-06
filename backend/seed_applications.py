@@ -273,8 +273,20 @@ def main() -> None:
         ordered = [chosen] + [d for d in ranked if d["id"] != dest_id]
         created_dt = now - timedelta(days=days_ago)
         created_at = created_dt.isoformat()
-        decided_at = (now - timedelta(days=max(0, days_ago - 1))).isoformat() \
-            if status in ("approved", "rejected") else None
+        # Use timestamp of the terminal status event as decided_at so the
+        # avg_days_to_decision stat reflects real casework duration.
+        decided_at = None
+        if status in ("approved", "rejected"):
+            terminal = [
+                e[0] for e in events
+                if e[1] == "status" and (
+                    "approved" in e[3].lower()
+                    or "closed" in e[3].lower()
+                    or "rejected" in e[3].lower()
+                )
+            ]
+            offset = max(terminal) if terminal else (days_ago - 1)
+            decided_at = (created_dt + timedelta(days=offset)).isoformat()
 
         cur = conn.execute(
             """INSERT INTO applications
