@@ -32,6 +32,14 @@ export function StatsView() {
     api.stats().then(setStats).catch(() => setErr(true));
   }, []);
 
+  // useMemo MUST be before any early returns (Rules of Hooks)
+  const activityKinds = useMemo(
+    () => !stats ? [] : (Object.entries(stats.events_by_kind) as [CaseEventKind, number][])
+      .filter(([, n]) => n > 0)
+      .sort(([, a], [, b]) => b - a),
+    [stats],
+  );
+
   if (err) return <div className="center-msg">Failed to load statistics.</div>;
   if (!stats) return <div className="center-msg">{t('common.loading')}</div>;
   if (stats.total === 0) return <div className="center-msg">{t('stats.nodata')}</div>;
@@ -49,13 +57,6 @@ export function StatsView() {
   };
 
   const CARE_LABELS = [t('care.0'), t('care.1'), t('care.2'), t('care.3')];
-
-  const activityKinds = useMemo(
-    () => (Object.entries(stats.events_by_kind) as [CaseEventKind, number][])
-      .filter(([, n]) => n > 0)
-      .sort(([, a], [, b]) => b - a),
-    [stats.events_by_kind],
-  );
 
   return (
     <>
