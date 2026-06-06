@@ -14,6 +14,8 @@ DB_PATH = DATA_DIR / "silverlink.db"
 BUILDINGS_GEOJSON = DATA_DIR / "buildings.geojson"
 DESTINATIONS_JSON = DATA_DIR / "destinations.json"
 DISTRICTS_JSON = DATA_DIR / "districts.json"
+VOUCHER_HOSPITALS_JSON = DATA_DIR / "voucher_hospitals.json"   # 21 EHCV GBA service points (hardcoded, gov-sourced)
+SOP_WAITS_JSON = DATA_DIR / "hk_sop_waits.json"               # cached HA Specialist-Outpatient waits (real snapshot)
 HEATMAP_FILES = {
     "age": DATA_DIR / "heatmap_age.json",
     "density": DATA_DIR / "heatmap_density.json",
@@ -59,11 +61,64 @@ OLD_AGE_YEARS = 40       # built >= this many years ago counts as "old"
 LOW_RISE_STOREYS = 7     # <= this many storeys + old => likely walk-up / no lift
 METERS_PER_STOREY = 3.0
 
-# --- Matching-score weights (sum = 1.0). The single place to retune the heuristic. ---
+# --- Matching-score weights (sum = 1.0). Default "balanced" profile; per-persona
+#     overrides live in weights.py. Reframed onto 4 honest dimensions. ---
 SCORING_WEIGHTS = {
-    "affordability": 0.30,   # Finances:   budget vs destination cost of living
-    "accessibility": 0.20,   # Mobility:   step-free need vs step-free housing availability
-    "care_access": 0.25,     # Care:       care level vs care capacity + healthcare
-    "lifestyle_fit": 0.15,   # Lifestyle:  prefs vs livability + HK-community presence
-    "proximity": 0.10,       # nearness to HK / family
+    "financial":    0.35,   # Income + savings vs real cost of living (the headline)
+    "connectivity": 0.25,   # Return-to-HK burden: return frequency × per-city transport cost+time
+    "care":         0.25,   # Care SPEED + affordability + EHCV-eligibility (NOT "better quality")
+    "livability":   0.15,   # Cantonese fit, mobility, environment, amenities
+}
+
+# --- Honest reframing constants -------------------------------------------------
+# HK has world-class care QUALITY (longest life expectancy); the pain is public-system
+# WAITING TIMES + COST. GBA's honest edge is fast + cheap routine care, with the HK
+# public-hospital safety net kept for serious care. See plan + value-prop memory.
+
+# HK baseline monthly costs for a relocating elderly person (modeled from RVD + care research).
+HK_BASELINE_RENT = 9000          # small private flat / subdivided unit (HK$/mo)
+HK_BASELINE_COL = 4000           # non-rent cost of living (HK$/mo)
+HK_BASELINE_CARE_HOME = 12000    # private residential care (HK$/mo)
+
+# Return-to-HK trip drivers (per year). Healthy senior ~1-2; chronic on HA follow-up 3-4;
+# frail multi-condition quarterly+. GBA EHCV/HA-pilot institution lets some follow-ups
+# happen locally, halving HA-driven trips.
+RETURN_BASE_TRIPS = 1.0          # banking / documents / admin baseline
+RETURN_FAMILY_TRIPS = 2.0        # scaled by family_in_hk (0..1)
+RETURN_PER_CHRONIC = 3.0         # HA specialist follow-ups per chronic condition / yr
+RETURN_CHRONIC_CAP = 4           # count at most this many chronic conditions
+RETURN_PILOT_FACTOR = 0.5        # ×0.5 chronic trips if city has an EHCV/HA-pilot institution
+RETURN_CARE_TRIPS = 1.0          # per care_level point (0..3)
+RETURN_TRIPS_CAP = 12.0
+
+# Connectivity normalization (value of money + time of cross-border returns).
+CONN_COST_INCOME_FRAC = 0.15     # annual return cost judged against 15% of yearly income
+CONN_HOURS_BUDGET = 120.0        # annual hours one is willing to spend crossing back
+CONN_W_COST = 0.6
+CONN_W_HOURS = 0.4
+
+# Care-speed model (weeks). HK side = real HA SOP wait (snapshot); GBA = modeled routine access.
+GBA_ROUTINE_WAIT_WEEKS = 1.0     # same-day/next-week private or EHCV routine care (modeled)
+GBA_NO_EHCV_WAIT_WEEKS = 4.0     # modeled, when no designated EHCV institution nearby
+STEP_FREE_GATE = 0.5             # hard-filter threshold for mobility-limited seniors
+
+# Benefit values for the transparency ledger (HK$/mo). Allowances are real amounts;
+# implicit subsidies are modeled.
+EHCV_ANNUAL_HKD = 2000           # Elderly Health Care Voucher / yr (real, hcv.gov.hk)
+PUBLIC_HOUSING_SUBSIDY_HKD = 5000  # modeled implicit monthly subsidy lost if forfeited
+COMMUNITY_SERVICES_HKD = 800     # modeled value of HK-only community care lost
+
+# Per-number provenance so the UI can badge honesty (real / hardcoded / modeled).
+PROVENANCE = {
+    # destination seed fields
+    "rent_monthly_hkd": "modeled", "col_monthly_hkd": "modeled", "care_home_private_hkd": "modeled",
+    "ehcv_institution": "hardcoded", "ehcv_points": "hardcoded", "gdrcs_available": "hardcoded",
+    "cantonese_env": "modeled", "step_free_housing": "modeled", "air_quality": "modeled",
+    "green_space": "modeled", "amenity_density": "modeled",
+    "border_travel_hr": "hardcoded", "border_oneway_hkd": "hardcoded", "control_point": "hardcoded",
+    # projection numbers
+    "gross_savings_hkd": "modeled", "lost_benefit_value_hkd": "modeled", "net_savings_hkd": "modeled",
+    "monthly_savings_hkd": "modeled", "pct_income_freed": "modeled", "runway_years": "modeled",
+    "time_to_care_hk_weeks": "real", "time_to_care_gba_weeks": "modeled",
+    "return_trips_per_year": "modeled", "return_burden_hkd": "modeled", "projected_wellbeing": "modeled",
 }

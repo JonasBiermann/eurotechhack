@@ -1,90 +1,136 @@
 """Seed the candidate destination cities (Greater Bay Area).
 
-The two HK datasets cover only Hong Kong, so cross-border destination attributes
-are SEEDED / ILLUSTRATIVE (clearly labelled as such in the UI). Each attribute is
-on a 0..1 scale except monthly_cost (HKD-equiv) and travel_time_hr.
+Honest provenance (badged in the UI):
+  - rent/col/care_home (HK$/mo)       -> MODELED from Numbeo / wellcee / livingcost research.
+  - ehcv_institution / ehcv_points    -> HARDCODED from gov sources (see voucher_hospitals.json).
+  - gdrcs_available                   -> HARDCODED from SWD Guangdong Residential Care Services list.
+  - border_travel_hr / oneway (snr)   -> HARDCODED from MTR HSR / HZMB / cross-border coach fares.
+  - cantonese_env/air/green/amenity   -> MODELED 0..1 livability proxies.
 
-Values are chosen so the ranking visibly reacts to the resident profile:
-  - low budget          -> Huizhou / Jiangmen / Zhongshan rise (cheap)
-  - high care need      -> Guangzhou / Shenzhen rise (top hospitals)
-  - closeness to family -> Shenzhen / Dongguan rise (nearest)
+We do NOT claim GBA care is "better" — HK quality is equal-or-better; the honest edge is
+cost + speed of routine care, with the HK public-hospital safety net kept for serious care.
+
+Values are chosen so the ranking visibly reacts to income, savings and return-to-HK
+frequency:
+  - frugal & healthy (rarely returns)  -> Huizhou / Jiangmen / Foshan rise (cheapest)
+  - chronic, returns to HK often        -> Shenzhen / Zhuhai rise (closest + EHCV)
+  - frail, needs a care bed             -> GDRCS cities rise (free core care)
+  - family-oriented + Cantonese          -> Zhongshan / Zhuhai / Guangzhou rise
+
+Compatibility: monthly_cost (= rent+col) and travel_time_hr (= border_travel_hr) are kept
+so the existing frontend badges keep working.
 """
 import json
 import config
 
+# city: (rent, col, care_home, ehcv_inst, ehcv_pts, gdrcs, canton, step_free, air, green, amenity,
+#        travel_hr, oneway_snr, control_point)
 DESTINATIONS = [
     {
         "id": "shenzhen", "name_en": "Shenzhen", "name_tc": "深圳",
-        "blurb_en": "Right across the border; top hospitals (incl. HKU-SZH) and the largest HK community.",
-        "blurb_tc": "一河之隔；醫療頂尖（包括港大深圳醫院），香港社群最大。",
+        "blurb_en": "Right across the border; HKU-Shenzhen Hospital takes the EHCV voucher and the largest HK community lives here.",
+        "blurb_tc": "一河之隔；港大深圳醫院可用醫療券，香港社群最大。",
         "lat": 22.5431, "lng": 114.0579,
-        "monthly_cost": 9000, "step_free_housing": 0.92, "care_capacity": 0.60,
-        "healthcare_score": 0.88, "livability": 0.62, "hk_community": 0.85, "travel_time_hr": 0.5,
-    },
-    {
-        "id": "zhongshan", "name_en": "Zhongshan", "name_tc": "中山",
-        "blurb_en": "A long-standing HK retirement choice — affordable, green, HK-affiliated care homes.",
-        "blurb_tc": "香港長者熱門退休地：消費實惠、綠化好，設有港資安老院。",
-        "lat": 22.5170, "lng": 113.3926,
-        "monthly_cost": 4500, "step_free_housing": 0.85, "care_capacity": 0.85,
-        "healthcare_score": 0.70, "livability": 0.80, "hk_community": 0.80, "travel_time_hr": 1.5,
-    },
-    {
-        "id": "zhuhai", "name_en": "Zhuhai", "name_tc": "珠海",
-        "blurb_en": "Coastal and relaxed, next to Macau; reached via the HK-Zhuhai-Macau Bridge.",
-        "blurb_tc": "沿海悠閒，毗鄰澳門；經港珠澳大橋直達。",
-        "lat": 22.2710, "lng": 113.5767,
-        "monthly_cost": 6000, "step_free_housing": 0.88, "care_capacity": 0.70,
-        "healthcare_score": 0.72, "livability": 0.85, "hk_community": 0.60, "travel_time_hr": 1.5,
+        "rent_monthly_hkd": 4000, "col_monthly_hkd": 3000, "care_home_private_hkd": 4500,
+        "ehcv_institution": "HKU-Shenzhen Hospital", "ehcv_points": 4, "gdrcs_available": True,
+        "cantonese_env": 0.40, "step_free_housing": 0.92, "air_quality": 0.60,
+        "green_space": 0.62, "amenity_density": 0.90,
+        "border_travel_hr": 0.4, "border_oneway_hkd": 60, "control_point": "Lo Wu / Futian (MTR & HSR)",
     },
     {
         "id": "guangzhou", "name_en": "Guangzhou", "name_tc": "廣州",
-        "blurb_en": "Provincial capital with the region's best hospitals; bigger-city amenities.",
-        "blurb_tc": "省會城市，醫療資源最佳；大城市配套齊全。",
+        "blurb_en": "Provincial capital, big-city amenities; several EHCV-designated hospitals. ~48 min by high-speed rail.",
+        "blurb_tc": "省會城市、配套齊全；多間醫療券指定醫院。高鐵約48分鐘。",
         "lat": 23.1291, "lng": 113.2644,
-        "monthly_cost": 8000, "step_free_housing": 0.90, "care_capacity": 0.75,
-        "healthcare_score": 0.92, "livability": 0.60, "hk_community": 0.65, "travel_time_hr": 1.75,
+        "rent_monthly_hkd": 4500, "col_monthly_hkd": 3000, "care_home_private_hkd": 4500,
+        "ehcv_institution": "First Affiliated Hospital, Sun Yat-sen University", "ehcv_points": 4, "gdrcs_available": True,
+        "cantonese_env": 0.90, "step_free_housing": 0.90, "air_quality": 0.58,
+        "green_space": 0.60, "amenity_density": 0.92,
+        "border_travel_hr": 1.0, "border_oneway_hkd": 200, "control_point": "West Kowloon (HSR)",
+    },
+    {
+        "id": "zhuhai", "name_en": "Zhuhai", "name_tc": "珠海",
+        "blurb_en": "Coastal and relaxed, next to Macau; the HK-Zhuhai-Macau Bridge senior shuttle is ~HK$35.",
+        "blurb_tc": "沿海悠閒、毗鄰澳門；港珠澳大橋長者穿梭巴約港幣35元。",
+        "lat": 22.2710, "lng": 113.5767,
+        "rent_monthly_hkd": 1500, "col_monthly_hkd": 2400, "care_home_private_hkd": 3500,
+        "ehcv_institution": "Fifth Affiliated Hospital, Sun Yat-sen University", "ehcv_points": 2, "gdrcs_available": False,
+        "cantonese_env": 0.80, "step_free_housing": 0.88, "air_quality": 0.78,
+        "green_space": 0.85, "amenity_density": 0.62,
+        "border_travel_hr": 0.7, "border_oneway_hkd": 35, "control_point": "HZMB shuttle (24h)",
+    },
+    {
+        "id": "zhongshan", "name_en": "Zhongshan", "name_tc": "中山",
+        "blurb_en": "A long-standing HK retirement choice — affordable, green, Cantonese, with GDRCS subsidised care homes.",
+        "blurb_tc": "香港長者熱門退休地：實惠、綠化、講粵語，設廣東院舍計劃資助安老院。",
+        "lat": 22.5170, "lng": 113.3926,
+        "rent_monthly_hkd": 1300, "col_monthly_hkd": 1800, "care_home_private_hkd": 3000,
+        "ehcv_institution": "Zhongshan Hospital of TCM", "ehcv_points": 2, "gdrcs_available": True,
+        "cantonese_env": 0.90, "step_free_housing": 0.85, "air_quality": 0.76,
+        "green_space": 0.82, "amenity_density": 0.58,
+        "border_travel_hr": 1.7, "border_oneway_hkd": 130, "control_point": "Cross-border coach (HZMB)",
     },
     {
         "id": "foshan", "name_en": "Foshan", "name_tc": "佛山",
-        "blurb_en": "Affordable and next to Guangzhou, with strong Cantonese heritage.",
-        "blurb_tc": "消費實惠，緊鄰廣州，嶺南粵文化濃厚。",
+        "blurb_en": "Very affordable and next to Guangzhou, with strong Cantonese heritage; EHCV hospitals on hand.",
+        "blurb_tc": "消費極實惠、緊鄰廣州、嶺南粵文化濃厚；設醫療券指定醫院。",
         "lat": 23.0218, "lng": 113.1219,
-        "monthly_cost": 5000, "step_free_housing": 0.86, "care_capacity": 0.65,
-        "healthcare_score": 0.78, "livability": 0.68, "hk_community": 0.55, "travel_time_hr": 1.75,
+        "rent_monthly_hkd": 1000, "col_monthly_hkd": 2400, "care_home_private_hkd": 3500,
+        "ehcv_institution": "First People's Hospital of Foshan", "ehcv_points": 2, "gdrcs_available": True,
+        "cantonese_env": 0.90, "step_free_housing": 0.86, "air_quality": 0.62,
+        "green_space": 0.68, "amenity_density": 0.66,
+        "border_travel_hr": 1.5, "border_oneway_hkd": 165, "control_point": "West Kowloon (HSR) → Foshanxi",
     },
     {
         "id": "dongguan", "name_en": "Dongguan", "name_tc": "東莞",
-        "blurb_en": "Close to the border and budget-friendly; quick to reach for visiting family.",
-        "blurb_tc": "鄰近邊境、消費相宜；家人探訪往返便捷。",
+        "blurb_en": "Close to the border and budget-friendly; quick to reach for visiting family. Tungwah Hospital takes the EHCV.",
+        "blurb_tc": "鄰近邊境、消費相宜、家人探訪便捷；東華醫院可用醫療券。",
         "lat": 23.0207, "lng": 113.7518,
-        "monthly_cost": 5500, "step_free_housing": 0.82, "care_capacity": 0.60,
-        "healthcare_score": 0.72, "livability": 0.58, "hk_community": 0.60, "travel_time_hr": 1.0,
+        "rent_monthly_hkd": 2000, "col_monthly_hkd": 2400, "care_home_private_hkd": 3500,
+        "ehcv_institution": "Dongguan Tungwah Hospital", "ehcv_points": 2, "gdrcs_available": False,
+        "cantonese_env": 0.50, "step_free_housing": 0.82, "air_quality": 0.60,
+        "green_space": 0.58, "amenity_density": 0.64,
+        "border_travel_hr": 1.5, "border_oneway_hkd": 100, "control_point": "MTR + Shenzhen Metro / coach",
     },
     {
         "id": "jiangmen", "name_en": "Jiangmen", "name_tc": "江門",
-        "blurb_en": "Ancestral home of many HK families — relaxed, very affordable, strong community ties.",
-        "blurb_tc": "不少香港人的祖籍地：節奏悠閒、消費極實惠、鄉里情濃。",
+        "blurb_en": "Ancestral home of many HK families — relaxed, Cantonese, very cheap; one EHCV hospital. Furthest to cross back.",
+        "blurb_tc": "不少香港人的祖籍地：悠閒、講粵語、極實惠；設一間醫療券醫院。返港路較遠。",
         "lat": 22.5787, "lng": 113.0815,
-        "monthly_cost": 3800, "step_free_housing": 0.80, "care_capacity": 0.78,
-        "healthcare_score": 0.68, "livability": 0.82, "hk_community": 0.90, "travel_time_hr": 2.0,
+        "rent_monthly_hkd": 1000, "col_monthly_hkd": 1800, "care_home_private_hkd": 3000,
+        "ehcv_institution": "Jiangmen Central Hospital", "ehcv_points": 1, "gdrcs_available": False,
+        "cantonese_env": 0.90, "step_free_housing": 0.80, "air_quality": 0.74,
+        "green_space": 0.82, "amenity_density": 0.52,
+        "border_travel_hr": 3.0, "border_oneway_hkd": 140, "control_point": "Cross-border coach (HZMB)",
     },
     {
         "id": "huizhou", "name_en": "Huizhou", "name_tc": "惠州",
-        "blurb_en": "Lakes, hills and sea air at the lowest cost — popular with HK retirees buying flats.",
-        "blurb_tc": "湖光山色、海風宜人，消費最低；港人置業退休熱點。",
+        "blurb_en": "Lakes, hills and sea air at the lowest cost — popular with HK retirees buying flats. Furthest to cross back.",
+        "blurb_tc": "湖光山色、海風宜人、消費最低；港人置業退休熱點。返港路較遠。",
         "lat": 23.1116, "lng": 114.4161,
-        "monthly_cost": 3500, "step_free_housing": 0.83, "care_capacity": 0.62,
-        "healthcare_score": 0.66, "livability": 0.86, "hk_community": 0.70, "travel_time_hr": 1.5,
+        "rent_monthly_hkd": 1100, "col_monthly_hkd": 1800, "care_home_private_hkd": 2800,
+        "ehcv_institution": "Huizhou Central People's Hospital", "ehcv_points": 1, "gdrcs_available": False,
+        "cantonese_env": 0.60, "step_free_housing": 0.83, "air_quality": 0.80,
+        "green_space": 0.86, "amenity_density": 0.50,
+        "border_travel_hr": 3.0, "border_oneway_hkd": 140, "control_point": "Cross-border coach",
     },
 ]
 
 
+def _with_compat(d: dict) -> dict:
+    """Add legacy fields the current frontend still reads."""
+    d = dict(d)
+    d["monthly_cost"] = d["rent_monthly_hkd"] + d["col_monthly_hkd"]   # legacy badge
+    d["travel_time_hr"] = d["border_travel_hr"]                         # legacy badge
+    return d
+
+
 def main() -> None:
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    out = [_with_compat(d) for d in DESTINATIONS]
     with open(config.DESTINATIONS_JSON, "w", encoding="utf-8") as f:
-        json.dump(DESTINATIONS, f, ensure_ascii=False, indent=2)
-    print(f"Wrote {len(DESTINATIONS)} GBA destinations -> {config.DESTINATIONS_JSON}")
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    print(f"Wrote {len(out)} GBA destinations -> {config.DESTINATIONS_JSON}")
 
 
 if __name__ == "__main__":

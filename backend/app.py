@@ -126,10 +126,24 @@ def destinations():
     return DESTINATIONS
 
 
+@app.get("/api/voucher-hospitals")
+def voucher_hospitals():
+    """The 21 EHCV-designated GBA service points (hardcoded, gov-sourced)."""
+    return _load(config.VOUCHER_HOSPITALS_JSON, {"institutions": []})
+
+
 @app.post("/api/destinations/rank")
-def rank(profile: dict = Body(default={})):
-    """Score every GBA city against the resident profile, best-first."""
-    return scoring.rank_destinations(profile, DESTINATIONS)
+def rank(profile: dict = Body(default={}), persona: str | None = Query(None)):
+    """Score every GBA city against the resident profile, best-first.
+
+    Each option carries match.subscores, the demo projections (net savings + runway,
+    time-to-care, return burden, projected wellbeing), a transparent benefits ledger,
+    warnings and per-number provenance. ``persona`` overrides the auto-selected weight
+    profile (balanced | frugal_healthy | chronic_hk_anchored | frail_residential |
+    family_oriented); it may also be passed as a "persona" key in the profile body.
+    """
+    persona = persona or profile.get("persona")
+    return scoring.rank_destinations(profile, DESTINATIONS, persona=persona)
 
 
 # ------------------------------------------------------------ application loop

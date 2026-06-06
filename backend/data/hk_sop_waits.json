@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "title": "HK Hospital Authority Specialist Out-patient (SOP) waiting times — cached snapshot",
+    "what": "Longest median wait (weeks) for ROUTINE / STABLE new-case bookings across clusters, plus the urgent (Priority 1) target.",
+    "why": "This is the real, citable HK pain point: world-class care quality, but ~1-2 year public-system waits for stable cases.",
+    "provenance": "real",
+    "source_page": "https://data.gov.hk/en-data/dataset/hospital-hadata-sop-waiting-time",
+    "live_endpoint": "https://www.ha.org.hk/opendata/sop/sop-waiting-time-en.json",
+    "live_fields": ["date_id_from", "date_id_to", "cluster", "specialty", "Category", "Description", "Value"],
+    "verified_against_live": "2026-06-07 — values below are the longest-cluster Routine waits from the live HA feed.",
+    "period": "Apr 2025 – Mar 2026",
+    "update_frequency": "Quarterly (Jan/Apr/Jul/Oct)",
+    "unit": "weeks"
+  },
+  "specialties": {
+    "medicine":      {"routine_weeks": 96,  "urgent_weeks": 2},
+    "surgery":       {"routine_weeks": 101, "urgent_weeks": 2},
+    "orthopaedics":  {"routine_weeks": 81,  "urgent_weeks": 2},
+    "ophthalmology": {"routine_weeks": 116, "urgent_weeks": 2},
+    "eye":           {"routine_weeks": 116, "urgent_weeks": 2},
+    "ent":           {"routine_weeks": 80,  "urgent_weeks": 2},
+    "gynaecology":   {"routine_weeks": 88,  "urgent_weeks": 2},
+    "psychiatry":    {"routine_weeks": 104, "urgent_weeks": 2},
+    "paediatrics":   {"routine_weeks": 39,  "urgent_weeks": 2},
+    "default":       {"routine_weeks": 96,  "urgent_weeks": 2}
+  }
+}
