@@ -14,11 +14,14 @@ The two are joined (point-in-polygon, ~99.9% hit rate) to derive the **"old + lo
 lift / not step-free"** signal that drives the government heatmap and the resident's *push* factor.
 GBA destination figures are **seeded/illustrative** (the HK datasets don't cover the mainland).
 
-## Two views
-- **Government** — a care-pressure **heatmap** (3 toggle metrics: ageing housing / building density /
-  likely no-lift) over Sham Shui Po, Kwun Tong, Wan Chai, plus an **applications approval queue**.
-- **Resident** (accessible, large-type) — a 4-step wizard: profile & finances → **rank GBA cities by
-  Match Score** → upload documents → submit & track status.
+## Two separate sites (one shared backend)
+- **Resident** (`frontend-resident/`, :5173) — accessible large-type 4-step wizard: profile & finances
+  → **rank GBA cities by Match Score** → upload documents → submit & track status.
+- **Government** (`frontend-government/`, :5174) — a care-pressure **heatmap** (3 toggle metrics:
+  ageing housing / building density / likely no-lift) over Sham Shui Po, Kwun Tong, Wan Chai, plus an
+  **applications approval queue**.
+
+They are fully independent apps (own deps/build), connected only through the FastAPI backend.
 
 EN ⇄ **繁體中文** toggle (UI strings *and* data fields). Desktop, glassmorphism, MapLibre GL.
 
@@ -31,9 +34,10 @@ PYTHONPATH=backend .venv/bin/python backend/seed_gba.py      # seed GBA cities
 PYTHONPATH=backend .venv/bin/python backend/ingest.py        # fetch + build HK data (network; cached after)
 PYTHONPATH=backend .venv/bin/uvicorn app:app --port 8000 --reload --reload-dir backend
 
-# 2. Frontend (Node 18+)
-cd frontend && npm install && npm run dev
-# open http://localhost:5173   (Vite proxies /api -> :8000)
+# 2. Frontend — two completely separate apps (Node 18+), each in its own terminal
+npm install --prefix frontend-resident   && npm run dev --prefix frontend-resident     # → http://localhost:5173
+npm install --prefix frontend-government && npm run dev --prefix frontend-government   # → http://localhost:5174
+# both proxy /api -> :8000
 
 # tests
 PYTHONPATH=backend .venv/bin/pytest backend/tests
@@ -44,9 +48,11 @@ PYTHONPATH=backend .venv/bin/pytest backend/tests
 
 ## Layout
 ```
-backend/   config · db · ingest (WFS+join) · seed_gba · scoring (model swap-point) · app (FastAPI)
-frontend/  src/{i18n, map/MapCanvas, views/{ResidentWizard,GovernmentView}, components, api, styles}
+backend/             config · db · ingest (WFS+join) · seed_gba · scoring (model swap-point) · app (FastAPI)
+frontend-resident/   src/{App, views/ResidentWizard, map, i18n, components, api, styles}   (:5173)
+frontend-government/ src/{App, views/GovernmentView,  map, i18n, components, api, styles}   (:5174)
 ```
+Each frontend carries its own copy of the common code (map/i18n/api/components/styles) — no shared module.
 
 ## The Match Score
 `backend/scoring.py :: compute_match_score(profile, dest)` — a transparent weighted sum over

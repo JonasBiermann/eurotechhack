@@ -10,10 +10,10 @@ backend/data/raw/
 backend/data/uploads/
 backend/data/*.db
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+# Frontend (two standalone apps)
+frontend-*/node_modules/
+frontend-*/dist/
+frontend-*/.vite/
 
 # Editor / OS
 .DS_Store

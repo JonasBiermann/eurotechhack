@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/client.ts","./src/components/MatchScore.tsx","./src/i18n/LanguageProvider.tsx","./src/i18n/dict.ts","./src/map/MapCanvas.tsx","./src/views/GovernmentView.tsx","./src/views/ResidentWizard.tsx"],"version":"5.9.3"}
