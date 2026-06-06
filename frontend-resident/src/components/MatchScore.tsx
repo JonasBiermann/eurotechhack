@@ -1,7 +1,7 @@
 import { useI18n } from '../i18n/LanguageProvider';
 import type { Factor } from '../api/client';
 
-function ringClass(score: number) {
+export function ringClass(score: number) {
   return score >= 70 ? 'ring-hi' : score >= 55 ? 'ring-mid' : 'ring-lo';
 }
 

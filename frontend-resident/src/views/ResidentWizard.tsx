@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
-import { api, type Destination, type Profile } from '../api/client';
+import { api, ApiError, type Destination, type Profile } from '../api/client';
 import type { MapState } from '../map/MapCanvas';
-import { ScoreDial, FactorBars } from '../components/MatchScore';
+import { ScoreDial, FactorBars, ringClass } from '../components/MatchScore';
 import { MatchDetails } from '../components/MatchDetails';
 import { GovShell } from '../components/GovShell';
 
@@ -11,14 +11,6 @@ type StepKey = 'form' | 'results';
 const PRIORITIES = ['family', 'cost', 'health', 'nature', 'community'] as const;
 type Prio = (typeof PRIORITIES)[number];
 
-const INCOME = [
-  { key: 'inc.lo', v: 5000 }, { key: 'inc.mid', v: 8000 },
-  { key: 'inc.hi', v: 12000 }, { key: 'inc.vhi', v: 18000 },
-] as const;
-const SAVINGS = [
-  { key: 'sav.lo', v: 30000 }, { key: 'sav.mid', v: 120000 },
-  { key: 'sav.hi', v: 350000 }, { key: 'sav.vhi', v: 700000 },
-] as const;
 const SPECIALTIES = ['medicine', 'orthopaedics', 'eye', 'ent', 'surgery', 'gynaecology', 'psychiatry'] as const;
 
 /** Wizard answers → the backend ResidentProfile the new algorithm expects. */
@@ -58,13 +50,13 @@ export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => 
   const [step, setStep] = useState<StepKey>('form');
   const [f, setF] = useState<FormState>({
     stepFree: null, care: null, prios: [],
-    income: null, savings: null,
+    income: 12000, savings: 120000,
     oala: true, cssa: false, publicHousing: false, cpr: true,
     chronic: 0, specialty: 'medicine', residential: false,
   });
-  const [files, setFiles] = useState<File[]>([]);
   const [ranked, setRanked] = useState<Destination[]>([]);
   const [choice, setChoice] = useState<Destination | null>(null);
+  const [focus, setFocus] = useState<MapState['focus']>(null);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((cur) => ({ ...cur, [k]: v }));
   const mapStage = step === 'results';
@@ -81,15 +73,12 @@ export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => 
   useEffect(() => {
     setView(mapStage
       ? { layer: 'destinations', metric: 'age', origin: null, footprintsBbox: null,
-          destinations: ranked, selectedDestId: choice?.id ?? null, focus: null }
+          destinations: ranked, selectedDestId: choice?.id ?? null, focus }
       : { layer: 'none', metric: 'age', origin: null, footprintsBbox: null,
           destinations: [], selectedDestId: null, focus: null });
-  }, [mapStage, ranked, choice, setView]);
+  }, [mapStage, ranked, choice, focus, setView]);
 
-  const togglePrio = (k: Prio) =>
-    set('prios', f.prios.includes(k) ? f.prios.filter((x) => x !== k) : f.prios.length < 2 ? [...f.prios, k] : f.prios);
-
-  const canSubmitForm = f.stepFree !== null && f.care !== null && f.prios.length > 0
+  const canSubmitForm = f.stepFree !== null && f.care !== null
     && f.income !== null && f.savings !== null;
   const progress = step === 'form' ? 50 : 100;
 
@@ -105,8 +94,9 @@ export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => 
         <div className="map-panel">
           <ResultsPanel
             ranked={ranked} choice={choice} setChoice={setChoice}
-            profile={buildProfile(f)} files={files}
-            onBack={() => setStep('form')} onExit={onExit}
+            onFocusCity={(d) => setFocus({ center: [d.lng, d.lat], zoom: 9 })}
+            profile={buildProfile(f)}
+            onBack={() => { setFocus(null); setStep('form'); }} onExit={onExit}
           />
         </div>
       ) : (
@@ -129,21 +119,17 @@ export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => 
           <section className="section">
             <h3>{t('q.income.title')}</h3>
             <p className="sub">{t('q.income.sub')}</p>
-            <div className="options">
-              {INCOME.map((o) => (
-                <Opt key={o.key} title={t(o.key)} sel={f.income === o.v} onClick={() => set('income', o.v)} />
-              ))}
-            </div>
+            <Slider value={f.income ?? 12000} min={0} max={30000} step={500}
+              fmt={(v) => `${t('common.hkd')}${v.toLocaleString()}${v >= 30000 ? '+' : ''}${t('common.perMonth')}`}
+              onChange={(v) => set('income', v)} />
           </section>
 
           <section className="section">
             <h3>{t('q.savings.title')}</h3>
             <p className="sub">{t('q.savings.sub')}</p>
-            <div className="options">
-              {SAVINGS.map((o) => (
-                <Opt key={o.key} title={t(o.key)} sel={f.savings === o.v} onClick={() => set('savings', o.v)} />
-              ))}
-            </div>
+            <Slider value={f.savings ?? 120000} min={0} max={1000000} step={10000}
+              fmt={(v) => `${t('common.hkd')}${v.toLocaleString()}${v >= 1000000 ? '+' : ''}`}
+              onChange={(v) => set('savings', v)} />
           </section>
 
           {/* benefits & status */}
@@ -198,25 +184,6 @@ export function ResidentWizard({ setView, onExit }: { setView: (v: MapState) => 
             )}
           </section>
 
-          {/* priorities */}
-          <section className="section">
-            <h3>{t('q.prio.title')}</h3>
-            <p className="sub">{t('q.prio.sub')}</p>
-            <div className="options">
-              {PRIORITIES.map((k) => {
-                const sel = f.prios.includes(k);
-                const dim = !sel && f.prios.length >= 2;
-                return <Opt key={k} title={t(`prio.${k}`)} sel={sel} dim={dim} onClick={() => !dim && togglePrio(k)} />;
-              })}
-            </div>
-          </section>
-
-          {/* documents */}
-          <section className="section">
-            <h3>{t('docs.title')}</h3>
-            <p className="sub">{t('docs.sub')}</p>
-            <Dropzone files={files} setFiles={setFiles} />
-          </section>
         </div>
 
         <div className="actions">
@@ -252,37 +219,23 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
   );
 }
 
-/* -------------------- document dropzone -------------------- */
-function Dropzone({ files, setFiles }: { files: File[]; setFiles: (f: File[]) => void }) {
-  const { t } = useI18n();
-  const [drag, setDrag] = useState(false);
-  const add = (l: FileList | null) => { if (l) setFiles([...files, ...Array.from(l)]); };
+function Slider({ value, min, max, step, fmt, onChange }: {
+  value: number; min: number; max: number; step: number;
+  fmt: (v: number) => string; onChange: (v: number) => void;
+}) {
   return (
-    <>
-      <label className={`dropzone ${drag ? 'drag' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => { e.preventDefault(); setDrag(false); add(e.dataTransfer.files); }}>
-        <div>{t('docs.drop')}</div>
-        <input type="file" multiple style={{ display: 'none' }} onChange={(e) => add(e.target.files)} />
-      </label>
-      {files.length === 0
-        ? <div className="muted" style={{ marginTop: 12, fontSize: 13 }}>{t('docs.none')}</div>
-        : files.map((file, i) => (
-          <div className="doc" key={i}>
-            <span className="fname">{file.name}</span>
-            <span className="muted">{(file.size / 1024).toFixed(1)} KB</span>
-            <button className="x" onClick={() => setFiles(files.filter((_, j) => j !== i))}>✕</button>
-          </div>
-        ))}
-    </>
+    <div className="slider">
+      <div className="slider-val">{fmt(value)}</div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(Number(e.target.value))} />
+    </div>
   );
 }
 
 /* -------------------- results + submit (map stage) -------------------- */
-function ResultsPanel({ ranked, choice, setChoice, profile, files, onBack, onExit }: {
+function ResultsPanel({ ranked, choice, setChoice, onFocusCity, profile, onBack, onExit }: {
   ranked: Destination[]; choice: Destination | null; setChoice: (d: Destination) => void;
-  profile: Profile; files: File[]; onBack: () => void; onExit: () => void;
+  onFocusCity: (d: Destination) => void; profile: Profile; onBack: () => void; onExit: () => void;
 }) {
   const { t, L } = useI18n();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -299,8 +252,10 @@ function ResultsPanel({ ranked, choice, setChoice, profile, files, onBack, onExi
       const ordered = [choice, ...ranked.filter((d) => d.id !== choice.id)];
       const res = await api.createApplication({ origin_address: '', profile, destinations: ordered });
       setAppId(res.id);
-      for (const file of files) { try { await api.uploadDocument(res.id, file); } catch { /* ignore */ } }
       setStatus('submitted');
+    } catch (e) {
+      // one application per resident — if the backend already has one, go to the dashboard
+      if (e instanceof ApiError && e.status === 409) { onExit(); return; }
     } finally { setSubmitting(false); }
   };
   const refresh = async () => {
@@ -346,7 +301,7 @@ function ResultsPanel({ ranked, choice, setChoice, profile, files, onBack, onExi
           const sel = choice?.id === d.id;
           const open = openId === d.id;
           return (
-            <div key={d.id} className={`dcard ${sel ? 'sel' : ''}`} onClick={() => setChoice(d)}>
+            <div key={d.id} className={`dcard ${ringClass(d.match?.score ?? 0)} ${sel ? 'sel' : ''}`} onClick={() => { setChoice(d); onFocusCity(d); }}>
               <div className="rank">{i + 1}</div>
               <ScoreDial score={d.match?.score ?? 0} />
               <div className="info">

@@ -254,8 +254,12 @@ def new_towns():
 @app.post("/api/applications")
 def create_application(payload: dict = Body(...), resident: dict = Depends(current_resident)):
     """Create an application owned by the authenticated resident. The applicant
-    name is taken from the account, not the client payload."""
+    name is taken from the account, not the client payload. One per resident —
+    a relocation happens only once."""
     conn = db.connect()
+    if conn.execute("SELECT 1 FROM applications WHERE resident_id=?", (resident["id"],)).fetchone():
+        conn.close()
+        raise HTTPException(409, "you already have an application")
     cur = conn.execute(
         """INSERT INTO applications
            (created_at, status, applicant_name, origin_address,

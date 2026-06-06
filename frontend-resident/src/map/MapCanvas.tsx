@@ -31,7 +31,7 @@ function colorByValue(metric: Metric): any {
 }
 function scoreColor(): any {
   return ['interpolate', ['linear'], ['get', 'score'],
-    40, '#fb7185', 60, '#fbbf24', 75, '#34d399', 90, '#2dd4bf'];
+    40, '#dc2626', 55, '#d97706', 70, '#16a34a', 90, '#16a34a'];
 }
 
 export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
@@ -109,7 +109,7 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
       if (!m.getLayer('dest-pt')) {
         m.addLayer({ type: 'circle', id: 'dest-halo', source: 'dests',
           paint: { 'circle-radius': ['case', ['==', ['get', 'sel'], 1], 26, 0],
-            'circle-color': '#2dd4bf', 'circle-opacity': 0.18 } });
+            'circle-color': '#9aa1b0', 'circle-opacity': 0.18 } });
         m.addLayer({ type: 'circle', id: 'dest-pt', source: 'dests',
           paint: {
             'circle-radius': ['interpolate', ['linear'], ['get', 'score'], 40, 7, 90, 20],
@@ -165,7 +165,7 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
         const b = new maplibregl.LngLatBounds();
         view.destinations.forEach((d) => b.extend([d.lng, d.lat]));
         if (view.origin) b.extend([view.origin.lng, view.origin.lat]);
-        m.fitBounds(b, { padding: 110, duration: 1000 });
+        m.fitBounds(b, { padding: 140, duration: 1000, maxZoom: 7.5 });
       } else if (view.layer === 'heatmap') {
         m.fitBounds(HK_BOUNDS, { padding: 80, duration: 800 });
       }
