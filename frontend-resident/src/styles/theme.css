@@ -450,6 +450,9 @@ input[type='text']:focus, input[type='number']:focus, input[type='date']:focus {
   border: 1px solid var(--line); border-left-width: 3px; border-left-color: var(--line);
   border-radius: var(--radius); background: var(--surface); }
 .todo-item.done { border-left-color: var(--ok); background: #f6fcf8; }
+.todo-item.upload { cursor: pointer; border-left-color: var(--accent); transition: 0.15s; }
+.todo-item.upload:hover { background: var(--accent-soft); border-color: var(--accent); }
+.todo-item.upload .todo-pill { color: #fff; background: var(--accent); }
 .todo-box { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center;
   font-size: 13px; font-weight: 800; color: #fff; background: #fff;
   border: 2px solid var(--line); }

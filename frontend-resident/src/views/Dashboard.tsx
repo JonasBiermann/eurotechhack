@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
 import { api, type Application } from '../api/client';
 import { GovShell } from '../components/GovShell';
-import { Dropzone } from '../components/Dropzone';
 import { ScoreDial, FactorBars, ringClass } from '../components/MatchScore';
 import { MatchDetails } from '../components/MatchDetails';
 import { PermitsPage } from './PermitsPage';
@@ -124,9 +123,9 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
     const isStarted = a.status === 'started';
     const docDone = (i: number) => a.documents.length > i;
     const allDocs = REQUIRED_DOCS.every((_, i) => docDone(i));
-    const checklist = [
+    const checklist: { label: string; desc: string; done: boolean; docIndex?: number }[] = [
       { label: t('todo.started'), desc: t('todo.started.d'), done: true },
-      ...REQUIRED_DOCS.map((k, i) => ({ label: t(k), desc: t(`${k}.d`), done: docDone(i) })),
+      ...REQUIRED_DOCS.map((k, i) => ({ label: t(k), desc: t(`${k}.d`), done: docDone(i), docIndex: i })),
       { label: t('todo.declare'), desc: t('todo.declare.d'), done: !isStarted },
       { label: t('todo.review'), desc: t('todo.review.d'), done: decided },
     ];
@@ -147,31 +146,41 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
               <span className="todo-count">{doneCount}/{checklist.length} {t('todo.progress')}</span>
             </div>
             <div className="todo-list">
-              {checklist.map((c, i) => (
-                <div className={`todo-item ${c.done ? 'done' : ''}`} key={i}>
-                  <span className="todo-box">{c.done ? '✓' : ''}</span>
-                  <div className="todo-text">
-                    <span className="todo-label">{c.label}</span>
-                    <span className="todo-desc">{c.desc}</span>
-                  </div>
-                  <span className={`todo-pill ${c.done ? 'ok' : ''}`}>{c.done ? t('todo.done') : t('todo.pending')}</span>
-                </div>
-              ))}
+              {checklist.map((c, i) => {
+                const uploadable = isStarted && c.docIndex !== undefined && !c.done;
+                const docFile = c.docIndex !== undefined && c.done ? a.documents[c.docIndex] : null;
+                const inner = (
+                  <>
+                    <span className="todo-box">{c.done ? '✓' : ''}</span>
+                    <div className="todo-text">
+                      <span className="todo-label">{c.label}</span>
+                      <span className="todo-desc">{docFile ? docFile.filename : c.desc}</span>
+                    </div>
+                    <span className={`todo-pill ${c.done ? 'ok' : ''}`}>
+                      {c.done ? t('todo.done') : uploadable ? t('todo.upload') : t('todo.pending')}
+                    </span>
+                  </>
+                );
+                if (uploadable) {
+                  return (
+                    <label className="todo-item upload" key={i}>
+                      {inner}
+                      <input type="file" accept="application/pdf" style={{ display: 'none' }}
+                        onChange={(e) => {
+                          if (e.target.files?.length) upload(a.id, Array.from(e.target.files));
+                          e.target.value = '';
+                        }} />
+                    </label>
+                  );
+                }
+                return (
+                  <div className={`todo-item ${c.done ? 'done' : ''}`} key={i}>{inner}</div>
+                );
+              })}
             </div>
-
-            {a.documents.length > 0 && (
-              <div style={{ margin: '12px 0 4px' }}>
-                {a.documents.map((d) => (
-                  <div className="doc" key={d.id}><span className="fname">{d.filename}</span></div>
-                ))}
-              </div>
-            )}
 
             {isStarted && (
               <>
-                <p className="sub" style={{ margin: '12px 0 8px' }}>{t('doc.uploadMore')}</p>
-                <Dropzone onFiles={(fs) => upload(a.id, fs)} />
-
                 {/* truth declaration + submit — unlocked once every document is in */}
                 {allDocs ? (
                   <div className="declare-box">

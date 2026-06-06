@@ -350,6 +350,7 @@ export const DICT: Record<string, Entry> = {
                 zh: '完成以下步驟，人員方可處理你的遷居申請。' },
   'todo.done': { en: 'Done', zh: '已完成' },
   'todo.pending': { en: 'To do', zh: '待辦' },
+  'todo.upload': { en: 'Upload PDF', zh: '上載 PDF' },
   'todo.progress': { en: 'steps complete', zh: '項已完成' },
   'todo.submitted': { en: 'Application submitted', zh: '已提交申請' },
   'todo.submitted.d': { en: 'Your relocation application has been received.', zh: '已收到你的遷居申請。' },
