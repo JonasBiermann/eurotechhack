@@ -11,6 +11,14 @@ export const DICT: Record<string, Entry> = {
   'mode.government': { en: 'Government', zh: '政府' },
   'lang.name': { en: 'EN', zh: '繁' },
 
+  // ---- GovHK-style portal chrome (shared language with the resident app) ----
+  'gov.brand.sub': { en: 'Greater Bay Area Elderly Relocation Service', zh: '大灣區長者遷居服務' },
+  'gov.sitemap': { en: 'Sitemap', zh: '網站指南' },
+  'gov.contact': { en: 'Contact Us', zh: '聯絡我們' },
+  'nav.home': { en: 'Home', zh: '主頁' },
+  'nav.service': { en: 'Elderly Relocation', zh: '長者遷居' },
+  'nav.console': { en: 'Officer Console', zh: '審批人員控制台' },
+
   'common.next': { en: 'Next', zh: '下一步' },
   'common.back': { en: 'Back', zh: '返回' },
   'common.loading': { en: 'Loading…', zh: '載入中…' },
