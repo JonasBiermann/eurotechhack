@@ -37,7 +37,7 @@ SEED = [
         [
             (0.00, "system", "System",
              "Application received", "申請已收到",
-             "Submitted via SilverLink resident portal."),
+             "Submitted via OnKui resident portal."),
             (0.02, "document", "Resident",
              "Documents uploaded (3)", "已上載文件（3 份）",
              "HKID, July 2026 medical report, income proof."),

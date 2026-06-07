@@ -4,11 +4,6 @@ import { type CaseEventKind, type Stats } from '../api/client';
 
 const PIPELINE_ORDER = ['submitted', 'under_review', 'approved', 'moved', 'rejected'] as const;
 
-const KIND_ICON: Record<CaseEventKind, string> = {
-  note: '📝', contact: '📞', visit: '🏠', followup: '🔔',
-  document: '📄', system: '⚙️', status: '🔁',
-};
-
 function scoreClass(s: number) {
   return s >= 75 ? 'hi' : s >= 60 ? 'mid' : 'lo';
 }
@@ -89,7 +84,6 @@ export function StatsView({ stats, err }: { stats: Stats | null; err: boolean })
 
       {/* ─── HOUSING IMPACT BANNER ────────────────────────── */}
       <div className="impact-banner">
-        <div className="impact-icon">🏘️</div>
         <div className="impact-body">
           <div className="impact-headline">
             <b>{stats.units_freed}</b>
@@ -183,7 +177,7 @@ export function StatsView({ stats, err }: { stats: Stats | null; err: boolean })
 
           {/* step-free demand */}
           <div className="stat-pill">
-            <span className="stat-pill-label">♿ {t('stats.stepfree.label')}</span>
+            <span className="stat-pill-label">{t('stats.stepfree.label')}</span>
             <div className="stat-pill-track">
               <div className="stat-pill-fill" style={{ width: `${stats.step_free_pct}%` }} />
             </div>
@@ -193,7 +187,7 @@ export function StatsView({ stats, err }: { stats: Stats | null; err: boolean })
           {/* avg income */}
           {stats.avg_income != null && (
             <div className="stat-pill">
-              <span className="stat-pill-label">💰 {t('stats.avgincome.label')}</span>
+              <span className="stat-pill-label">{t('stats.avgincome.label')}</span>
               <span className="stat-pill-value stat-pill-value-solo">
                 {t('common.hkd')}{stats.avg_income.toLocaleString()}{t('common.perMonth')}
               </span>
@@ -234,7 +228,6 @@ export function StatsView({ stats, err }: { stats: Stats | null; err: boolean })
             <div className="activity-grid">
               {activityKinds.map(([kind, n]) => (
                 <div key={kind} className={`activity-chip activity-chip-${kind}`}>
-                  <span className="activity-icon">{KIND_ICON[kind]}</span>
                   <span className="activity-count">{n}</span>
                   <span className="activity-lbl">{t(`tl.kind.${kind}`)}</span>
                 </div>

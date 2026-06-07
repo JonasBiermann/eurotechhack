@@ -1,5 +1,5 @@
 """Benefits Ledger — 100% transparent account of what a senior KEEPS, GAINS, LOSES,
-and RISKS by relocating. This is the trust-first / anti-scam core of SilverLink: we
+and RISKS by relocating. This is the trust-first / anti-scam core of OnKui: we
 never hide a downside, every entry is sourced, and quantifiable losses are netted
 into the hero savings number.
 

@@ -132,7 +132,7 @@ def main() -> None:
     foot_features: list[dict] = []  # raw geojson features (for buildings.geojson)
     bd_rows: list[dict] = []
 
-    with httpx.Client(headers={"User-Agent": "SilverLink/1.0"}) as client:
+    with httpx.Client(headers={"User-Agent": "OnKui/1.0"}) as client:
         for d in config.DISTRICTS:
             print(f"District {d['name_en']} ({d['id']}):")
             foots = fetch_layer(client, **config.LANDSD_BUILDING, bbox=d["bbox"],

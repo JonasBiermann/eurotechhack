@@ -26,9 +26,9 @@ export function GovShell({ crumbs, children, chromeOnly }: {
       </div>
 
       <div className="gov-masthead">
-        <div className="gov-logo">SL</div>
+        <div className="gov-logo">安</div>
         <div className="gov-brand">
-          <span className="nm">SilverLink<span className="tc">銀聯橋</span></span>
+          <span className="nm">OnKui<span className="tc">安居</span></span>
           <span className="sub">{t('gov.brand.sub')}</span>
         </div>
         <form className="gov-search" onSubmit={(e) => e.preventDefault()}>

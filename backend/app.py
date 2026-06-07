@@ -1,4 +1,4 @@
-"""SilverLink API — serves the HK backbone data, the GBA match ranking, and the
+"""OnKui (安居) API — serves the HK backbone data, the GBA match ranking, and the
 resident→government application loop. Run from backend/:  uvicorn app:app --reload
 """
 import json
@@ -14,7 +14,7 @@ import config
 import db
 import scoring
 
-app = FastAPI(title="SilverLink API", version="1.0")
+app = FastAPI(title="OnKui API", version="1.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=False,
     allow_methods=["*"], allow_headers=["*"],

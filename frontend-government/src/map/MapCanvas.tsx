@@ -106,8 +106,6 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
 
   function applyStatPins(pins: StatPin[]) {
     const m = map.current!;
-    const scoreRamp: any[] = ['interpolate', ['linear'], ['get', 'avg_score'],
-      50, '#f87171', 65, '#fbbf24', 75, '#34d399', 88, '#2dd4bf'];
     const fc: any = {
       type: 'FeatureCollection',
       features: pins.map((p) => ({
@@ -126,8 +124,8 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
         },
       })),
     };
-    // A city with confirmed movers turns solid green; otherwise it stays on the score ramp.
-    const dotColor: any = ['case', ['>', ['get', 'moved'], 0], '#0f8a6a', scoreRamp];
+    // Restrained HK-gov palette: applicant cities in bauhinia red, settled cities in green.
+    const dotColor: any = ['case', ['>', ['get', 'moved'], 0], '#0f7a44', '#d6202a'];
     if (m.getSource('stat-pins')) (m.getSource('stat-pins') as any).setData(fc);
     else m.addSource('stat-pins', { type: 'geojson', data: fc });
 

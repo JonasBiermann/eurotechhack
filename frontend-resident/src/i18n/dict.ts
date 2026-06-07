@@ -3,7 +3,7 @@ export type Lang = 'en' | 'zh';
 type Entry = { en: string; zh: string };
 
 export const DICT: Record<string, Entry> = {
-  'app.title': { en: 'SilverLink', zh: '銀聯橋' },
+  'app.title': { en: 'OnKui', zh: '安居' },
   'app.tagline': { en: 'A better life in the Greater Bay Area, matched on real city data',
                    zh: '大灣區安居，以真實城市數據配對' },
 
@@ -15,7 +15,7 @@ export const DICT: Record<string, Entry> = {
   'gov.brand.sub': { en: 'Greater Bay Area Living — support for Hong Kong seniors', zh: '大灣區安居 — 香港長者支援服務' },
   'gov.sitemap': { en: 'Sitemap', zh: '網站指南' },
   'gov.contact': { en: 'Contact Us', zh: '聯絡我們' },
-  'gov.search.ph': { en: 'Search SilverLink', zh: '搜尋銀聯橋' },
+  'gov.search.ph': { en: 'Search OnKui', zh: '搜尋安居' },
   'gov.search.btn': { en: 'Search', zh: '搜尋' },
   'gov.signedin': { en: 'Signed in', zh: '已登入' },
   'nav.home': { en: 'Home', zh: '主頁' },
@@ -48,8 +48,8 @@ export const DICT: Record<string, Entry> = {
   'foot.copyright': { en: 'Copyright Notice', zh: '版權公告' },
   'foot.privacy': { en: 'Privacy Policy', zh: '私隱政策' },
   'foot.disclaimer': { en: 'Disclaimer', zh: '免責聲明' },
-  'foot.rights': { en: '© 2026 SilverLink — a hackathon demonstration. Not affiliated with or endorsed by the Government of the HKSAR.',
-                   zh: '© 2026 銀聯橋 — 黑客松示範項目。與香港特別行政區政府無關，亦未獲其認可。' },
+  'foot.rights': { en: '© 2026 OnKui — a hackathon demonstration. Not affiliated with or endorsed by the Government of the HKSAR.',
+                   zh: '© 2026 安居 — 黑客松示範項目。與香港特別行政區政府無關，亦未獲其認可。' },
 
   // ---- auth (HKID login / register) ----
   'auth.login.title': { en: 'Welcome back', zh: '歡迎回來' },

@@ -3,7 +3,7 @@ export type Lang = 'en' | 'zh';
 type Entry = { en: string; zh: string };
 
 export const DICT: Record<string, Entry> = {
-  'app.title': { en: 'SilverLink', zh: '銀聯橋' },
+  'app.title': { en: 'OnKui', zh: '安居' },
   'app.tagline': { en: 'Voluntary moves to the Greater Bay Area, matched on real city data',
                    zh: '長者自願移居大灣區，以真實城市數據配對' },
 
