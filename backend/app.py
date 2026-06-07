@@ -317,6 +317,25 @@ def submit_application(app_id: int, resident: dict = Depends(current_resident)):
     return {"id": app_id, "status": "submitted"}
 
 
+@app.delete("/api/applications/{app_id}")
+def delete_application(app_id: int, resident: dict = Depends(current_resident)):
+    """Resident deletes their own application so they can start a new one."""
+    conn = db.connect()
+    row = conn.execute("SELECT resident_id FROM applications WHERE id=?", (app_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "application not found")
+    if row["resident_id"] != resident["id"]:
+        conn.close()
+        raise HTTPException(403, "not your application")
+    conn.execute("DELETE FROM case_events WHERE application_id=?", (app_id,))
+    conn.execute("DELETE FROM documents WHERE application_id=?", (app_id,))
+    conn.execute("DELETE FROM applications WHERE id=?", (app_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 # ---------------------------------------------- permits & allowances (self-service)
 
 _PERMIT_KINDS = ("home_return_permit", "guangdong_allowance")

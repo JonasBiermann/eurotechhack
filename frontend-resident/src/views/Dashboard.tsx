@@ -30,6 +30,8 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
   const [page, setPage] = useState<Page>('home');
   const [declared, setDeclared] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const load = () => api.myApplications().then(setApps).catch(() => setApps([]));
@@ -55,6 +57,13 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
     setSubmitting(true);
     try { await api.submitApplication(id); await load(); } catch { /* ignore */ }
     finally { setSubmitting(false); }
+  };
+
+  const deleteApp = async (id: number) => {
+    setDeleting(true);
+    try { await api.deleteApplication(id); setSelectedId(null); setConfirmDeleteId(null); await load(); }
+    catch (e) { console.error('delete failed', e); }
+    finally { setDeleting(false); }
   };
 
   const fmtDate = (iso: string) => {
@@ -142,7 +151,20 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
         { label: t('nav.service'), onClick: () => setSelectedId(null) },
         `${t('dash.app')} #${a.id}`]}>
         <div className="gov-content">
-          <button className="btn" onClick={() => setSelectedId(null)}>← {t('dash.backToList')}</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button className="btn" onClick={() => setSelectedId(null)}>← {t('dash.backToList')}</button>
+            {confirmDeleteId === a.id ? (
+              <>
+                <span style={{ fontSize: 13, color: '#c0392b' }}>{t('dash.deleteConfirm')}</span>
+                <button className="btn btn-danger" disabled={deleting} onClick={() => deleteApp(a.id)}>
+                  {deleting ? '…' : t('dash.deleteYes')}
+                </button>
+                <button className="btn" onClick={() => setConfirmDeleteId(null)}>{t('dash.deleteNo')}</button>
+              </>
+            ) : (
+              <button className="btn btn-danger" onClick={() => setConfirmDeleteId(a.id)}>{t('dash.delete')}</button>
+            )}
+          </div>
 
           {/* ---- to-do checklist (top of the overview) ---- */}
           <h2 className="gov-sec-title" style={{ marginTop: 16 }}>{t('todo.title')}</h2>

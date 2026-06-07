@@ -168,6 +168,11 @@ export const api = {
   },
   submitApplication: (id: number) =>
     jpost<{ id: number; status: string }>(`/api/applications/${id}/submit`, {}),
+  deleteApplication: async (id: number) => {
+    const r = await fetch(`/api/applications/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (!r.ok) throw new ApiError(r.status, await detail(r));
+    return r.json() as Promise<{ ok: boolean }>;
+  },
   createPermit: (payload: {
     kind: PermitKind; scheme?: AllowanceScheme; details: Record<string, unknown>;
   }) => jpost<{ id: number; kind: PermitKind; scheme: AllowanceScheme | null; status: string }>('/api/permits', payload),
