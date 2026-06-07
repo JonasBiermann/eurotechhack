@@ -7,8 +7,13 @@ Built on two HK open datasets as the **origin backbone**:
 
 | Dataset | Use |
 |---|---|
-| **BD – Building information & age records** (`bd_rcd_1631167534872_19764`) | building **age** (occupation-permit date), address, usage |
-| **LandsD – OpenMap Building** (`landsd_rcd_1637211194312_35158`) | building **footprint + height** |
+| **BD – [Building information and age records](https://data.gov.hk/en-data/dataset/hk-bd-opendata-building-information)** (`bd_rcd_1631167534872_19764`) | building **age** (occupation-permit date), address, usage |
+| **LandsD – [Building (OpenMap)](https://data.gov.hk/en-data/dataset/hk-landsd-openmap-landsd-building)** (`landsd_rcd_1637211194312_35158`) | building **footprint + height** |
+
+Both are Hong Kong open data, accessed live over OGC **WFS** from the
+[CSDI portal](https://portal.csdi.gov.hk/) (`portal.csdi.gov.hk/server/...`) — see
+[`backend/config.py`](backend/config.py) and [`backend/ingest.py`](backend/ingest.py) for the exact
+endpoints and dataset IDs.
 
 The two are joined (point-in-polygon, ~99.9% hit rate) to derive the **"old + low-rise → likely no
 lift / not step-free"** signal that drives the government heatmap and the resident's *push* factor.
