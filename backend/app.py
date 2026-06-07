@@ -6,7 +6,7 @@ import re
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import Body, Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -367,7 +367,10 @@ def my_permits(resident: dict = Depends(current_resident)):
 
 
 @app.post("/api/applications/{app_id}/documents")
-async def upload_document(app_id: int, file: UploadFile = File(...)):
+async def upload_document(app_id: int, file: UploadFile = File(...),
+                          doc_type: str = Form("certificate")):
+    if doc_type not in ("certificate", "proof_of_move"):
+        raise HTTPException(400, "doc_type must be certificate|proof_of_move")
     conn = db.connect()
     if not conn.execute("SELECT 1 FROM applications WHERE id=?", (app_id,)).fetchone():
         conn.close()
@@ -378,20 +381,21 @@ async def upload_document(app_id: int, file: UploadFile = File(...)):
     path = dest_dir / file.filename
     path.write_bytes(content)
     cur = conn.execute(
-        """INSERT INTO documents (application_id, filename, stored_path, size, content_type, uploaded_at)
-           VALUES (?,?,?,?,?,?)""",
-        (app_id, file.filename, str(path), len(content), file.content_type, _now()),
+        """INSERT INTO documents (application_id, filename, stored_path, size, content_type, uploaded_at, doc_type)
+           VALUES (?,?,?,?,?,?,?)""",
+        (app_id, file.filename, str(path), len(content), file.content_type, _now(), doc_type),
     )
     doc_id = cur.lastrowid
+    is_proof = doc_type == "proof_of_move"
     _log_event(
         conn, app_id, kind="document", author="Resident",
-        title_en=f"Document uploaded: {file.filename}",
-        title_tc=f"已上載文件：{file.filename}",
-        meta={"document_id": doc_id, "filename": file.filename},
+        title_en=("Proof of move uploaded: " if is_proof else "Document uploaded: ") + file.filename,
+        title_tc=("已上載遷居證明：" if is_proof else "已上載文件：") + file.filename,
+        meta={"document_id": doc_id, "filename": file.filename, "doc_type": doc_type},
     )
     conn.commit()
     conn.close()
-    return {"id": doc_id, "filename": file.filename, "size": len(content)}
+    return {"id": doc_id, "filename": file.filename, "size": len(content), "doc_type": doc_type}
 
 
 def _events_for(conn, app_id: int) -> list[dict]:
@@ -426,12 +430,17 @@ def _app_to_dict(row, conn) -> dict:
     d["profile"] = json.loads(d.pop("profile_json") or "{}")
     d["destinations"] = json.loads(d.pop("destinations_json") or "[]")
     docs = conn.execute(
-        "SELECT id, filename, size, content_type, uploaded_at FROM documents WHERE application_id=?",
+        "SELECT id, filename, size, content_type, uploaded_at, doc_type FROM documents WHERE application_id=?",
         (row["id"],),
     ).fetchall()
     d["documents"] = [dict(x) for x in docs]
     d["events"] = _events_for(conn, row["id"])
     d["top_destination"] = d["destinations"][0] if d["destinations"] else None
+    # Resident has submitted proof of move and is awaiting officer confirmation.
+    d["proof_pending"] = (
+        d.get("status") == "approved"
+        and any(x.get("doc_type") == "proof_of_move" for x in d["documents"])
+    )
     return d
 
 
@@ -471,24 +480,34 @@ _DECISION_TITLES = {
     "under_review": ("Marked for review", "列為審核中"),
     "approved":     ("Application approved", "申請已批准"),
     "rejected":     ("Application closed",  "申請已結案"),
+    "moved":        ("Move confirmed — resident settled", "已確認遷居 — 居民已安頓"),
 }
 
 
 @app.post("/api/applications/{app_id}/decision")
 def decide(app_id: int, payload: dict = Body(...)):
     decision = payload.get("decision")
-    if decision not in ("under_review", "approved", "rejected"):
-        raise HTTPException(400, "decision must be under_review|approved|rejected")
+    if decision not in ("under_review", "approved", "rejected", "moved"):
+        raise HTTPException(400, "decision must be under_review|approved|rejected|moved")
     conn = db.connect()
     prev = conn.execute("SELECT status FROM applications WHERE id=?", (app_id,)).fetchone()
     if not prev:
         conn.close()
         raise HTTPException(404, "application not found")
-    decided_at = _now() if decision in ("approved", "rejected") else None
+    # A move can only be confirmed for an already-approved application.
+    if decision == "moved" and prev["status"] != "approved":
+        conn.close()
+        raise HTTPException(409, "only an approved application can be confirmed as moved")
     officer = payload.get("officer") or "Officer Lam"
     note = payload.get("note")
-    conn.execute("UPDATE applications SET status=?, note=?, decided_at=? WHERE id=?",
-                 (decision, note, decided_at, app_id))
+    if decision == "moved":
+        # Keep decided_at (the approval timestamp); record the settle date separately.
+        conn.execute("UPDATE applications SET status=?, moved_at=? WHERE id=?",
+                     (decision, _now(), app_id))
+    else:
+        decided_at = _now() if decision in ("approved", "rejected") else None
+        conn.execute("UPDATE applications SET status=?, note=?, decided_at=? WHERE id=?",
+                     (decision, note, decided_at, app_id))
     title_en, title_tc = _DECISION_TITLES[decision]
     _log_event(
         conn, app_id, kind="status", author=officer,
@@ -567,16 +586,21 @@ def get_stats():
     under_review = by_status.get("under_review", 0)
     approved    = by_status.get("approved", 0)
     rejected    = by_status.get("rejected", 0)
-    decided     = approved + rejected
+    moved       = by_status.get("moved", 0)
+    # A 'moved' application was approved earlier in its lifecycle, so it still
+    # counts as an approval (and a freed unit) for these aggregates.
+    approved_total = approved + moved
+    decided     = approved_total + rejected
 
     # ---- scan all applications once for scores / profiles ----
     app_rows = conn.execute(
-        "SELECT destinations_json, profile_json, created_at, decided_at FROM applications"
+        "SELECT destinations_json, profile_json, created_at, decided_at, status FROM applications"
     ).fetchall()
 
     scores: list = []
     decision_days: list = []
     dest_counts: dict = {}
+    dest_moved_counts: dict = {}
     dest_score_sums: dict = {}
     care_counts: dict = {0: 0, 1: 0, 2: 0, 3: 0}
     step_free_count = 0
@@ -596,6 +620,8 @@ def get_stats():
                 if did:
                     dest_counts[did] = dest_counts.get(did, 0) + 1
                     dest_score_sums.setdefault(did, []).append(s)
+                    if row["status"] == "moved":
+                        dest_moved_counts[did] = dest_moved_counts.get(did, 0) + 1
 
         if row["decided_at"] and row["created_at"]:
             try:
@@ -621,6 +647,7 @@ def get_stats():
                 "name_en": dest_meta.get(did, (did, did))[0],
                 "name_tc": dest_meta.get(did, (did, did))[1],
                 "count": count,
+                "moved": dest_moved_counts.get(did, 0),
                 "avg_score": round(
                     sum(dest_score_sums.get(did, [0]))
                     / max(1, len(dest_score_sums.get(did, []))), 0
@@ -653,10 +680,12 @@ def get_stats():
             "under_review": under_review,
             "approved":    approved,
             "rejected":    rejected,
+            "moved":       moved,
         },
-        "units_freed":   approved,
+        "settled_total": moved,
+        "units_freed":   approved_total,
         "pending":       submitted + under_review,
-        "approval_rate": round(approved / decided * 100, 1) if decided > 0 else None,
+        "approval_rate": round(approved_total / decided * 100, 1) if decided > 0 else None,
         "avg_match_score": round(sum(scores) / len(scores), 1) if scores else None,
         "avg_days_to_decision": round(sum(decision_days) / len(decision_days), 1) if decision_days else None,
         "by_destination": by_destination,

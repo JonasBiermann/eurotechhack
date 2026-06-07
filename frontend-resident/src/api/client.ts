@@ -69,8 +69,10 @@ export interface Profile {
   persona?: string;
 }
 
+export type DocType = 'certificate' | 'proof_of_move';
 export interface DocMeta {
   id: number; filename: string; size: number; content_type: string; uploaded_at: string;
+  doc_type?: DocType;
 }
 
 export interface Application {
@@ -79,6 +81,7 @@ export interface Application {
   profile: Profile; destinations: Destination[]; documents: DocMeta[];
   top_destination: Destination | null; note: string | null; decided_at: string | null;
   declaration_at: string | null;
+  moved_at?: string | null; proof_pending?: boolean;
 }
 
 export type PermitKind = 'home_return_permit' | 'guangdong_allowance';
@@ -153,9 +156,10 @@ export const api = {
   createApplication: (payload: {
     origin_address: string; profile: Profile; destinations: Destination[];
   }) => jpost<{ id: number; status: string }>('/api/applications', payload),
-  uploadDocument: async (appId: number, file: File) => {
+  uploadDocument: async (appId: number, file: File, docType: DocType = 'certificate') => {
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('doc_type', docType);
     const r = await fetch(`/api/applications/${appId}/documents`, {
       method: 'POST', headers: authHeaders(), body: fd,
     });

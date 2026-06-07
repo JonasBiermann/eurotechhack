@@ -4,6 +4,7 @@ import { api, type Application } from '../api/client';
 import { GovShell } from '../components/GovShell';
 import { ScoreDial, FactorBars, ringClass } from '../components/MatchScore';
 import { MatchDetails } from '../components/MatchDetails';
+import { NextSteps } from '../components/NextSteps';
 import { PermitsPage } from './PermitsPage';
 
 /* simple inline line-icons (no emoji) */
@@ -44,6 +45,10 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
 
   const upload = async (id: number, files: File[]) => {
     for (const f of files) { try { await api.uploadDocument(id, f); } catch { /* ignore */ } }
+    load();
+  };
+  const uploadProof = async (id: number, files: File[]) => {
+    for (const f of files) { try { await api.uploadDocument(id, f, 'proof_of_move'); } catch { /* ignore */ } }
     load();
   };
   const submitApp = async (id: number) => {
@@ -119,7 +124,8 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
   if (selected) {
     const a = selected;
     const top = a.top_destination ?? a.destinations[0] ?? null;
-    const decided = a.status === 'approved' || a.status === 'rejected';
+    const decided = a.status === 'approved' || a.status === 'rejected' || a.status === 'moved';
+    const showNextSteps = a.status === 'approved' || a.status === 'moved';
     const isStarted = a.status === 'started';
     const docDone = (i: number) => a.documents.length > i;
     const allDocs = REQUIRED_DOCS.every((_, i) => docDone(i));
@@ -200,6 +206,12 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
               </>
             )}
           </section>
+
+          {/* ---- next steps + proof of move (after approval) ---- */}
+          {showNextSteps && (
+            <NextSteps app={a} dest={top} onUploadProof={(fs) => uploadProof(a.id, fs)}
+              onOpenPermits={() => setPage('permits')} />
+          )}
 
           {/* ---- your selected city with all the advantages ---- */}
           {top && (

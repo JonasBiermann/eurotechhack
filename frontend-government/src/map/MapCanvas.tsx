@@ -118,20 +118,27 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
           name: lang === 'en' ? p.name_en : p.name_tc,
           count: p.count,
           avg_score: p.avg_score,
+          moved: p.moved ?? 0,
+          // settled cities get a green pin + a "N settled" caption under the name.
+          label: (p.moved ?? 0) > 0 && p.settled_label
+            ? `${lang === 'en' ? p.name_en : p.name_tc}\n${p.settled_label}`
+            : (lang === 'en' ? p.name_en : p.name_tc),
         },
       })),
     };
+    // A city with confirmed movers turns solid green; otherwise it stays on the score ramp.
+    const dotColor: any = ['case', ['>', ['get', 'moved'], 0], '#0f8a6a', scoreRamp];
     if (m.getSource('stat-pins')) (m.getSource('stat-pins') as any).setData(fc);
     else m.addSource('stat-pins', { type: 'geojson', data: fc });
 
     if (!m.getLayer('stat-halo')) {
       m.addLayer({ type: 'circle', id: 'stat-halo', source: 'stat-pins', paint: {
         'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 20, 4, 38],
-        'circle-color': scoreRamp, 'circle-opacity': 0.13,
+        'circle-color': dotColor, 'circle-opacity': 0.13,
       }});
       m.addLayer({ type: 'circle', id: 'stat-dot', source: 'stat-pins', paint: {
         'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 11, 4, 22],
-        'circle-color': scoreRamp,
+        'circle-color': dotColor,
         'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5,
       }});
       m.addLayer({ type: 'symbol', id: 'stat-count', source: 'stat-pins', layout: {
@@ -139,10 +146,13 @@ export function MapCanvas({ view, lang }: { view: MapState; lang: Lang }) {
         'text-size': 13, 'text-font': ['Open Sans Bold'], 'text-anchor': 'center',
       }, paint: { 'text-color': '#ffffff' }});
       m.addLayer({ type: 'symbol', id: 'stat-label', source: 'stat-pins', layout: {
-        'text-field': ['get', 'name'],
+        'text-field': ['get', 'label'],
         'text-size': 12, 'text-offset': [0, 2.4], 'text-anchor': 'top',
         'text-font': ['Open Sans Bold'],
       }, paint: { 'text-color': '#1d2733', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }});
+    } else {
+      m.setPaintProperty('stat-halo', 'circle-color', dotColor);
+      m.setPaintProperty('stat-dot', 'circle-color', dotColor);
     }
   }
   function clearStatPins() {

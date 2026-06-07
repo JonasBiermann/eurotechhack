@@ -43,8 +43,10 @@ export interface Profile {
   pref_community?: number; pref_quiet?: number;
 }
 
+export type DocType = 'certificate' | 'proof_of_move';
 export interface DocMeta {
   id: number; filename: string; size: number; content_type: string; uploaded_at: string;
+  doc_type?: DocType;
 }
 
 export type CaseEventKind = 'note' | 'contact' | 'visit' | 'followup'
@@ -64,17 +66,26 @@ export interface Application {
   profile: Profile; destinations: Destination[]; documents: DocMeta[];
   events: CaseEvent[];
   top_destination: Destination | null; note: string | null; decided_at: string | null;
+  moved_at?: string | null; proof_pending?: boolean;
 }
 
 export interface DestStat {
   id: string; name_en: string; name_tc: string; count: number; avg_score: number;
+  moved?: number;
+}
+
+/** A GBA city plotted on the stats map: applicant count + settled (moved) count. */
+export interface StatPin {
+  id: string; name_en: string; name_tc: string; lat: number; lng: number;
+  count: number; avg_score: number; moved?: number; settled_label?: string;
 }
 export interface CareLevelStat { level: number; count: number; }
 export interface MonthStat { month: string; count: number; }
 
 export interface Stats {
   total: number;
-  by_status: { submitted: number; under_review: number; approved: number; rejected: number; };
+  by_status: { submitted: number; under_review: number; approved: number; rejected: number; moved: number; };
+  settled_total: number;
   units_freed: number;
   pending: number;
   approval_rate: number | null;

@@ -4,8 +4,8 @@ type Entry = { en: string; zh: string };
 
 export const DICT: Record<string, Entry> = {
   'app.title': { en: 'SilverLink', zh: '銀聯橋' },
-  'app.tagline': { en: 'Voluntary elderly relocation, matched on real city data',
-                   zh: '長者自願遷居，以真實城市數據配對' },
+  'app.tagline': { en: 'Voluntary moves to the Greater Bay Area, matched on real city data',
+                   zh: '長者自願移居大灣區，以真實城市數據配對' },
 
   'mode.resident': { en: 'Resident', zh: '居民' },
   'mode.government': { en: 'Government', zh: '政府' },
@@ -34,8 +34,8 @@ export const DICT: Record<string, Entry> = {
 
   // ---- Government: heatmap ----
   'gov.tab.heatmap': { en: 'Care-pressure map', zh: '照護壓力地圖' },
-  'gov.tab.apps': { en: 'Applications', zh: '遷居申請' },
-  'gov.heatmap.title': { en: 'Where relocation helps most', zh: '遷居最能紓緩之處' },
+  'gov.tab.apps': { en: 'Applications', zh: '申請' },
+  'gov.heatmap.title': { en: 'Where a move helps most', zh: '移居最能紓緩之處' },
   'gov.heatmap.sub': { en: 'Old, lift-less housing where elderly are most likely stuck.',
                        zh: '樓齡高、沒有升降機，長者最易困住的住屋。' },
   'metric.age': { en: 'Ageing housing', zh: '老化住屋' },
@@ -53,7 +53,7 @@ export const DICT: Record<string, Entry> = {
   'stat.noLift': { en: 'no-lift', zh: '無升降機' },
 
   // ---- Government: applications ----
-  'apps.title': { en: 'Relocation applications', zh: '遷居申請' },
+  'apps.title': { en: 'Applications', zh: '移居申請' },
   'apps.empty': { en: 'No applications yet. Submit one from the Resident view.',
                   zh: '暫無申請。請於「居民」介面提交。' },
   'apps.applicant': { en: 'Applicant', zh: '申請人' },
@@ -64,6 +64,7 @@ export const DICT: Record<string, Entry> = {
   'apps.approve': { en: 'Approve', zh: '批准' },
   'apps.reject': { en: 'Reject', zh: '拒絕' },
   'apps.review': { en: 'Mark under review', zh: '列為審核中' },
+  'apps.confirmMoved': { en: 'Confirm moved', zh: '確認已遷居' },
   'apps.note': { en: 'Official note', zh: '審批備註' },
   'apps.notePh': { en: 'Reason / conditions (shown to the resident)…',
                    zh: '理由／條件（會顯示給居民）…' },
@@ -74,6 +75,7 @@ export const DICT: Record<string, Entry> = {
   'status.submitted': { en: 'Submitted', zh: '已提交' },
   'status.under_review': { en: 'Under review', zh: '審核中' },
   'status.approved': { en: 'Approved', zh: '已批准' },
+  'status.moved': { en: 'Settled', zh: '已安頓' },
   'status.rejected': { en: 'Rejected', zh: '已拒絕' },
 
   // ---- Resident wizard ----
@@ -104,8 +106,8 @@ export const DICT: Record<string, Entry> = {
   'p.storeys': { en: 'storeys', zh: '層' },
   'p.noLiftWarn': { en: 'Old walk-up — likely no lift', zh: '舊式唐樓 — 相信沒有升降機' },
   'p.hasLift': { en: 'Likely has a lift', zh: '相信設有升降機' },
-  'p.pushNote': { en: "That's exactly the kind of home relocation can help with.",
-                  zh: '這正是遷居計劃可以幫到的情況。' },
+  'p.pushNote': { en: "That's exactly the kind of home a move can help with.",
+                  zh: '這正是移居可以改善的居住情況。' },
 
   'mob.0': { en: 'Independent', zh: '完全自理' },
   'mob.1': { en: 'Walks with a cane', zh: '需用拐杖' },
@@ -156,8 +158,8 @@ export const DICT: Record<string, Entry> = {
                   zh: '此申請完全自願，由居民主動提出。' },
 
   // ---- Government console ----
-  'app.subtitle': { en: 'Senior support · Greater Bay Area relocation',
-                    zh: '長者支援 · 大灣區遷居' },
+  'app.subtitle': { en: 'Senior support · Greater Bay Area Living',
+                    zh: '長者支援 · 大灣區安居' },
 
   'tab.map':      { en: 'Map',          zh: '地圖' },
   'tab.requests': { en: 'Applications', zh: '申請' },
@@ -166,8 +168,8 @@ export const DICT: Record<string, Entry> = {
   'sec.newtowns': { en: 'Greater Bay Area destinations', zh: '大灣區目的地' },
   'sec.requests': { en: 'Resident applications',       zh: '居民申請' },
 
-  'nt.intro':     { en: 'Greater Bay Area cities residents can voluntarily relocate to, keeping their HK entitlements.',
-                    zh: '居民可自願遷往的大灣區城市，並保留香港福利待遇。' },
+  'nt.intro':     { en: 'Greater Bay Area cities residents can voluntarily move to, keeping their HK entitlements.',
+                    zh: '居民可自願移居的大灣區城市，並保留香港福利待遇。' },
   'nt.available': { en: 'available', zh: '可供申請' },
   'nt.planned':   { en: 'planned',   zh: '規劃中' },
 
@@ -177,12 +179,14 @@ export const DICT: Record<string, Entry> = {
   'req.new':      { en: 'New',       zh: '新申請' },
   'req.review':   { en: 'Reviewing', zh: '審核中' },
   'req.approved': { en: 'Approved',  zh: '已批准' },
+  'req.settled':  { en: 'Settled',   zh: '已安頓' },
   'req.closed':   { en: 'Closed',    zh: '已結案' },
   'req.empty':    { en: 'No applications match this filter.', zh: '沒有符合的申請。' },
   'req.match':    { en: 'match', zh: '配對度' },
   'req.daysAgo':  { en: 'd ago', zh: '日前' },
   'req.today':    { en: 'today', zh: '今日' },
   'req.docs':     { en: 'docs', zh: '文件' },
+  'req.proofPending': { en: 'Proof to review', zh: '待核遷居證明' },
 
   'pressure.title': { en: 'Where housing options matter most for older residents',
                       zh: '長者最需要房屋選項的地區' },
@@ -194,6 +198,11 @@ export const DICT: Record<string, Entry> = {
   'detail.casefile':   { en: 'Case file',           zh: '個案檔案' },
   'detail.profileMatch': { en: 'Profile & match',   zh: '個人條件及配對' },
   'detail.docs':       { en: 'Documents',           zh: '文件' },
+  'detail.proofTag':   { en: 'Proof of move',       zh: '遷居證明' },
+  'detail.proofReview':{ en: 'Resident submitted proof of move — review the document, then confirm.',
+                         zh: '居民已提交遷居證明 — 請查閱文件後確認。' },
+  'detail.settledNote':{ en: 'Move confirmed — this resident has settled in their new city.',
+                         zh: '已確認遷居 — 此居民已於新城市安頓。' },
   'detail.actions':    { en: 'Caseworker actions',  zh: '個案人員操作' },
   'detail.noteSavedTo':{ en: 'Decision is recorded on the case file.',
                          zh: '審批將記錄於個案檔案。' },
@@ -234,6 +243,9 @@ export const DICT: Record<string, Entry> = {
   'stats.kpi.score':        { en: 'Avg match',               zh: '平均配對' },
   'stats.kpi.speed':        { en: 'Days to decide',          zh: '平均審批天數' },
   'stats.kpi.rate':         { en: 'Approval rate',           zh: '批准率' },
+  'stats.kpi.settled':      { en: 'Settled',                 zh: '已安頓' },
+  'stats.kpi.settled.sub':  { en: 'Move confirmed',          zh: '已確認遷居' },
+  'stats.settled':          { en: 'settled',                 zh: '已安頓' },
   'stats.pipeline.title':   { en: 'Application pipeline',    zh: '申請流程' },
   'stats.pipeline.total':   { en: 'total',                   zh: '宗' },
   'stats.dest.title':       { en: 'GBA destinations',        zh: '大灣區目的地' },

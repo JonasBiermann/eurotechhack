@@ -161,6 +161,7 @@ h2, h3, h4 { color: var(--ink); font-weight: 700; }
 .badge-submitted    { background: #e8edff; color: #3b52d6; }
 .badge-under_review { background: #fdf0db; color: #b06f08; }
 .badge-approved     { background: #e0f5ea; color: #0b8a5c; }
+.badge-moved        { background: #d6f0e4; color: #07724b; }
 .badge-rejected     { background: #fde7e9; color: #c4313c; }
 
 input[type='text'], input[type='number'] {
@@ -334,6 +335,7 @@ input[type='range'] { width: 100%; accent-color: var(--bauhinia); height: 26px; 
 .badge-submitted { background: var(--info-soft); color: var(--info); border: 1px solid rgba(31, 95, 166, 0.25); }
 .badge-under_review { background: var(--gold-soft); color: var(--gold-dark); border: 1px solid rgba(201, 165, 90, 0.4); }
 .badge-approved { background: var(--success-soft); color: var(--success); border: 1px solid rgba(15, 138, 106, 0.3); }
+.badge-moved { background: #d6f0e4; color: #07724b; border: 1px solid rgba(7, 114, 75, 0.35); }
 .badge-rejected { background: var(--danger-soft); color: var(--danger); border: 1px solid rgba(185, 28, 44, 0.28); }
 
 .kpis { display: flex; gap: 10px; margin-bottom: 18px; }
@@ -674,6 +676,18 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow);
 }
 .case-action-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
 .case-action-btns .btn { padding: 9px 10px; font-size: 12.5px; }
+/* single-action bar (Confirm moved) spans full width */
+.case-action-btns:has(> .btn:only-child) { grid-template-columns: 1fr; }
+.case-proof-note {
+  font-size: 13px; font-weight: 600; color: #07724b;
+  background: #d6f0e4; border: 1px solid rgba(7, 114, 75, 0.3);
+  padding: 9px 12px; border-radius: var(--radius);
+}
+.case-settled-note {
+  font-size: 13.5px; font-weight: 700; color: #07724b; text-align: center;
+  background: #d6f0e4; border: 1px solid rgba(7, 114, 75, 0.3);
+  padding: 11px 12px; border-radius: var(--radius);
+}
 
 /* ================================================================
    Case-file timeline
@@ -821,6 +835,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow);
 .pipe-dot-submitted    { background: #3b52d6; }
 .pipe-dot-under_review { background: var(--amber); }
 .pipe-dot-approved     { background: var(--ok); }
+.pipe-dot-moved        { background: #07724b; }
 .pipe-dot-rejected     { background: var(--bad); }
 .pipe-label { font-size: 12px; font-weight: 600; color: var(--muted); min-width: 76px; flex: none; }
 .pipe-track { flex: 1; height: 11px; background: var(--band); border-radius: 3px; overflow: hidden; }
@@ -828,6 +843,7 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow);
 .pipe-fill-submitted    { background: #3b52d6; }
 .pipe-fill-under_review { background: var(--amber); }
 .pipe-fill-approved     { background: var(--ok); }
+.pipe-fill-moved        { background: #07724b; }
 .pipe-fill-rejected     { background: var(--bad); }
 .pipe-count {
   font-size: 12px; font-weight: 800; color: var(--ink);

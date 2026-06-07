@@ -27,14 +27,15 @@ CREATE INDEX IF NOT EXISTS idx_bd_district ON bd_records(district_id);
 CREATE TABLE IF NOT EXISTS applications (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at       TEXT,
-  status           TEXT,                -- started | submitted | under_review | approved | rejected
+  status           TEXT,                -- started | submitted | under_review | approved | rejected | moved
   applicant_name   TEXT,
   origin_address   TEXT,
   profile_json     TEXT,
   destinations_json TEXT,               -- ranked GBA choices with scores
   note             TEXT,                -- official's decision note
   decided_at       TEXT,
-  declaration_at   TEXT                 -- when the resident declared truth & submitted
+  declaration_at   TEXT,                -- when the resident declared truth & submitted
+  moved_at         TEXT                 -- when an officer confirmed the resident has settled
 );
 
 CREATE TABLE IF NOT EXISTS documents (
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS documents (
   size           INTEGER,
   content_type   TEXT,
   uploaded_at    TEXT,
+  doc_type       TEXT,             -- 'certificate' (application docs) | 'proof_of_move'
   FOREIGN KEY (application_id) REFERENCES applications(id)
 );
 
@@ -105,6 +107,8 @@ def init_db() -> None:
     for stmt in (
         "ALTER TABLE applications ADD COLUMN resident_id INTEGER",
         "ALTER TABLE applications ADD COLUMN declaration_at TEXT",
+        "ALTER TABLE applications ADD COLUMN moved_at TEXT",
+        "ALTER TABLE documents ADD COLUMN doc_type TEXT",
         "ALTER TABLE residents ADD COLUMN ehealth_consent INTEGER",
     ):
         try:

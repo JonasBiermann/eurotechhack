@@ -219,6 +219,7 @@ input[type='text']:focus, input[type='number']:focus, input[type='date']:focus {
 .badge-submitted { background: var(--accent-soft); color: var(--accent-press); }
 .badge-under_review { background: #fdf0db; color: #b06f08; }
 .badge-approved { background: #e0f5ea; color: #0b8a5c; }
+.badge-moved { background: #d6f0e4; color: #07724b; }
 .badge-rejected { background: #fde7e9; color: #c4313c; }
 
 .muted { color: var(--muted); }

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
-import { api, type CaseEventKind, type Stats } from '../api/client';
+import { type CaseEventKind, type Stats } from '../api/client';
 
-const PIPELINE_ORDER = ['submitted', 'under_review', 'approved', 'rejected'] as const;
+const PIPELINE_ORDER = ['submitted', 'under_review', 'approved', 'moved', 'rejected'] as const;
 
 const KIND_ICON: Record<CaseEventKind, string> = {
   note: '📝', contact: '📞', visit: '🏠', followup: '🔔',
@@ -23,14 +23,8 @@ function monthLabel(ym: string, lang: string) {
   return d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'zh-HK', { month: 'short' });
 }
 
-export function StatsView() {
+export function StatsView({ stats, err }: { stats: Stats | null; err: boolean }) {
   const { t, lang } = useI18n();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [err, setErr] = useState(false);
-
-  useEffect(() => {
-    api.stats().then(setStats).catch(() => setErr(true));
-  }, []);
 
   // useMemo MUST be before any early returns (Rules of Hooks)
   const activityKinds = useMemo(
@@ -53,6 +47,7 @@ export function StatsView() {
     submitted:    { label: t('req.new'),      cls: 'submitted'    },
     under_review: { label: t('req.review'),   cls: 'under_review' },
     approved:     { label: t('req.approved'), cls: 'approved'     },
+    moved:        { label: t('req.settled'),  cls: 'moved'        },
     rejected:     { label: t('req.closed'),   cls: 'rejected'     },
   };
 
@@ -103,6 +98,7 @@ export function StatsView() {
           <div className="impact-sub">
             {stats.pending} application{stats.pending !== 1 ? 's' : ''} in progress
             {stats.approval_rate != null && ` · ${stats.approval_rate}% approval rate`}
+            {stats.settled_total > 0 && ` · ${stats.settled_total} ${t('stats.settled')}`}
           </div>
         </div>
       </div>

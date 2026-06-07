@@ -34,7 +34,7 @@ export function GovernmentView({ view, setView }: {
   );
 
   const pendingCount = apps.filter(
-    (a) => a.status === 'submitted' || a.status === 'under_review',
+    (a) => a.status === 'submitted' || a.status === 'under_review' || a.proof_pending,
   ).length;
 
   useEffect(() => {
@@ -62,8 +62,10 @@ export function GovernmentView({ view, setView }: {
       .map((d) => {
         const dest = gbaDests.find((g) => g.id === d.id);
         if (!dest) return null;
+        const moved = d.moved ?? 0;
         return { id: d.id, name_en: d.name_en, name_tc: d.name_tc,
-          lat: dest.lat, lng: dest.lng, count: d.count, avg_score: d.avg_score };
+          lat: dest.lat, lng: dest.lng, count: d.count, avg_score: d.avg_score,
+          moved, settled_label: moved > 0 ? `${moved} ${t('stats.settled')}` : undefined };
       })
       .filter(Boolean) as StatPin[];
     setView({ ...view, layer: 'stats', statsPins, gbaPins: [], destinations: [], selectedDestId: null, focus: null });
@@ -103,6 +105,8 @@ export function GovernmentView({ view, setView }: {
             await refreshApps();
             const fresh = await api.application(openedApp.id);
             setApps((cur) => cur.map((a) => a.id === fresh.id ? fresh : a));
+            // Refresh stats so the settled map/pipeline reflect a just-confirmed move.
+            api.stats().then(setStats).catch(() => {});
           }}
           flyDest={flyDest}
         />
@@ -194,7 +198,7 @@ function Section({ title, children }: { title: string; children: any }) {
   );
 }
 
-type ReqFilter = 'all' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+type ReqFilter = 'all' | 'submitted' | 'under_review' | 'approved' | 'moved' | 'rejected';
 
 function RequestsList({ apps, onPick }: {
   apps: Application[]; onPick: (a: Application) => void;
@@ -207,6 +211,7 @@ function RequestsList({ apps, onPick }: {
     submitted: apps.filter((a) => a.status === 'submitted').length,
     under_review: apps.filter((a) => a.status === 'under_review').length,
     approved: apps.filter((a) => a.status === 'approved').length,
+    moved: apps.filter((a) => a.status === 'moved').length,
     rejected: apps.filter((a) => a.status === 'rejected').length,
   }), [apps]);
 
@@ -220,6 +225,7 @@ function RequestsList({ apps, onPick }: {
     { key: 'submitted',    label: t('req.new'),      tone: 'info' },
     { key: 'under_review', label: t('req.review'),   tone: 'gold' },
     { key: 'approved',     label: t('req.approved'), tone: 'success' },
+    { key: 'moved',        label: t('req.settled'),  tone: 'success' },
     { key: 'rejected',     label: t('req.closed'),   tone: 'danger' },
   ];
 
@@ -253,6 +259,9 @@ function RequestsList({ apps, onPick }: {
               onClick={() => onPick(a)}>
               <div className="req-row-top">
                 <b>{a.applicant_name || `#${a.id}`}</b>
+                {a.proof_pending && (
+                  <span className="badge badge-moved" style={{ padding: '2px 8px', fontSize: 11 }}>🧳 {t('req.proofPending')}</span>
+                )}
                 <span className={`badge badge-${a.status}`}>{t(`status.${a.status}`)}</span>
               </div>
               <div className="req-row-flow">
@@ -387,8 +396,11 @@ function CaseDetail({ app, onBack, onChanged, flyDest }: {
               : app.documents.map((d) => (
                 <a className="doc" key={d.id} target="_blank" rel="noreferrer"
                   href={`/api/applications/${app.id}/documents/${d.id}`}>
-                  <span>📄</span>
+                  <span>{d.doc_type === 'proof_of_move' ? '🧳' : '📄'}</span>
                   <span className="fname">{d.filename}</span>
+                  {d.doc_type === 'proof_of_move' && (
+                    <span className="badge badge-moved" style={{ padding: '2px 8px', fontSize: 11 }}>{t('detail.proofTag')}</span>
+                  )}
                   <span style={{ color: 'var(--muted)' }}>{(d.size / 1024).toFixed(1)} KB</span>
                 </a>
               ))}
@@ -400,24 +412,39 @@ function CaseDetail({ app, onBack, onChanged, flyDest }: {
 
       {/* STICKY ACTION BAR */}
       <div className="case-actionbar">
-        <input
-          className="case-note-inline"
-          type="text"
-          value={decisionNote}
-          onChange={(e) => setDecisionNote(e.target.value)}
-          placeholder={t('apps.notePh')}
-        />
-        <div className="case-action-btns">
-          <button className="btn" disabled={working} onClick={() => decide('under_review')}>
-            {t('apps.review')}
-          </button>
-          <button className="btn btn-danger" disabled={working} onClick={() => decide('rejected')}>
-            {t('apps.reject')}
-          </button>
-          <button className="btn btn-primary" disabled={working} onClick={() => decide('approved')}>
-            {t('apps.approve')}
-          </button>
-        </div>
+        {app.status === 'moved' ? (
+          <div className="case-settled-note">✓ {t('detail.settledNote')}</div>
+        ) : app.proof_pending ? (
+          <>
+            <div className="case-proof-note">🧳 {t('detail.proofReview')}</div>
+            <div className="case-action-btns">
+              <button className="btn btn-primary" disabled={working} onClick={() => decide('moved')}>
+                {t('apps.confirmMoved')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <input
+              className="case-note-inline"
+              type="text"
+              value={decisionNote}
+              onChange={(e) => setDecisionNote(e.target.value)}
+              placeholder={t('apps.notePh')}
+            />
+            <div className="case-action-btns">
+              <button className="btn" disabled={working} onClick={() => decide('under_review')}>
+                {t('apps.review')}
+              </button>
+              <button className="btn btn-danger" disabled={working} onClick={() => decide('rejected')}>
+                {t('apps.reject')}
+              </button>
+              <button className="btn btn-primary" disabled={working} onClick={() => decide('approved')}>
+                {t('apps.approve')}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </>
   );
