@@ -61,7 +61,7 @@
 
   <!-- Slide 1: Transition video -->
   <div class="layer" id="videoLayer" data-slide="1">
-    <video id="video" src="/transition.mp4" preload="auto" playsinline muted></video>
+    <video id="video" src="transition.mp4" preload="auto" playsinline muted></video>
   </div>
 
   <!-- Slide 2: Government site -->
@@ -70,13 +70,9 @@
   </div>
 
   <!-- Controls: keyboard arrows only -->
-  <div class="dots">
-    <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
-  </div>
 
   <script>
     const layers = [...document.querySelectorAll('.layer')];
-    const dots   = [...document.querySelectorAll('.dot')];
     const video  = document.getElementById('video');
     const LAST = layers.length - 1;
     let current = 0;
@@ -87,7 +83,6 @@
       current = index;
 
       layers.forEach((l, i) => l.classList.toggle('active', i === current));
-      dots.forEach((d, i) => d.classList.toggle('active', i === current));
 
       // Play the video only while its slide is active; reset otherwise.
       if (current === 1) {

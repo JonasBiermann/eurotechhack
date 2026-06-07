@@ -12,16 +12,19 @@ Judges compare this against `git shortlog -sn`, so keep it honest.
 `git shortlog -sn` for this repo:
 
 ```
-18  go57ras  (Jonas Biermann, jonas.biermann@tum.de)
- 9  Sivaram Yadav Nalliboyana  (nsivaramdav@gmail.com)
- 3  Matteo  (nyce0979@gmail.com)
+    17  go57ras
+    9  Sivaram Yadav Nalliboyana
+    2  Matteo
+    1  Ediz Perez
+    1  sheyxps
 ```
 
 | Member | GitHub handle | Main contributions |
 |---|---|---|
 | Jonas Biermann | `go57ras` / `JonasBiermann` (repo owner) | Backend (FastAPI app, ingest/WFS join, scoring/projections/benefits, DB), data seeding, resident + government frontends, glass/red design |
 | Sivaram Yadav Nalliboyana | `nsivaramdav` (commit name) | Frontend work, government console / stats, integration |
-| Matteo | `nyce0979` (commit name) | Frontend / design contributions |
+| Matteo | `nyce0979` / `sheyxps` (commit name) | Frontend / Presentation/ design contributions |
+| Ediz | `Ediz Perez` (commit name) | Frontend / Backend (FastAPI app), data seeding |
 
 ---
 
@@ -56,8 +59,8 @@ Features that run end-to-end on the live app, with real data and real logic.
 | Benefit values in the ledger | `backend/benefits.py`, `config.py` | Allowance amounts (OAA/OALA, EHCV) are **real**; public-housing implicit subsidy (HK$5,000) and community-services value (HK$800) are **modeled** constants | Source per-household subsidy values |
 | "No-lift / not step-free" signal | `backend/ingest.py` `is_no_lift` (`config.OLD_AGE_YEARS=40`, `LOW_RISE_STOREYS=7`) | No dataset of actual lift installations exists; we infer it | Heuristic: old (≥40 yr) + low-rise (≤7 storeys) ⇒ likely walk-up. Not real lift records |
 | Voice "assistant" is scripted TTS, not a conversational AI | `frontend-resident/src/hooks/useElevenLabs.ts`, `SpeechAvatar.tsx`, i18n strings spoken in `ResidentWizard.tsx` | We wanted an accessible spoken guide, not an LLM agent | It reads **fixed UI/dictionary strings** aloud via ElevenLabs. There is no LLM, no dialogue understanding, no generated text anywhere in the project |
-| Community-graph matching (the "keep communities together" pitch) | **Not implemented** (PIPELINE.txt Stage 2) | Time | The business video says 安居 "learns what seniors share and moves people from similar backgrounds to the same places." That social-graph clustering / cluster-matching is **not built** — matching is per-individual via the weighted score |
-| Systemic-impact simulation / freed-unit cascade ("digital twin") | **Not implemented** (PIPELINE.txt Stage 4) | Time | `/api/stats` exposes a `units_freed` counter, but there is **no** simulation of waitlist relief or live network rebalancing |
+| Community-graph matching (the "keep communities together" pitch) | **Not implemented** (docs/PIPELINE.txt Stage 2) | Time | The business video says 安居 "learns what seniors share and moves people from similar backgrounds to the same places." That social-graph clustering / cluster-matching is **not built** — matching is per-individual via the weighted score |
+| Systemic-impact simulation / freed-unit cascade ("digital twin") | **Not implemented** (docs/PIPELINE.txt Stage 4) | Time | `/api/stats` exposes a `units_freed` counter, but there is **no** simulation of waitlist relief or live network rebalancing |
 
 ---
 
