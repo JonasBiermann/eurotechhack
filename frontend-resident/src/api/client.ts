@@ -12,7 +12,7 @@ export interface Factor {
 }
 export interface MatchResult { score: number; factors: Factor[]; subscores?: Record<string, number>; }
 
-export type Provenance = 'real' | 'hardcoded' | 'modeled';
+export type Provenance = 'real' | 'sourced' | 'hardcoded' | 'modeled';
 export type LedgerStatus = 'kept' | 'gained' | 'lost' | 'at_risk' | 'reduced';
 /** One row of the transparency ledger: what the senior keeps / gains / loses / risks. */
 export interface LedgerEntry {
@@ -81,7 +81,22 @@ export interface Application {
   profile: Profile; destinations: Destination[]; documents: DocMeta[];
   top_destination: Destination | null; note: string | null; decided_at: string | null;
   declaration_at: string | null;
-  moved_at?: string | null; proof_pending?: boolean;
+  moved_at?: string | null; proof_pending?: boolean; cohort_optin?: boolean;
+}
+
+export interface Caseworker {
+  name_en: string; name_tc: string; phone: string; office_en: string; office_tc: string;
+}
+/** The same-city community for the resident's chosen GBA city (caseworker-mediated). */
+export interface Cohort {
+  has_destination: boolean;
+  opted_in?: boolean;
+  application_id?: number;
+  city_id?: string; name_en?: string; name_tc?: string;
+  members?: number; others?: number; in_window?: number; moved?: number; approved?: number;
+  caseworker?: Caseworker;
+  control_point?: string | null; border_travel_hr?: number | null; ehcv_institution?: string | null;
+  peers?: { name: string; status: string }[];
 }
 
 export type PermitKind = 'home_return_permit' | 'guangdong_allowance';
@@ -154,8 +169,11 @@ export const api = {
   heatmap: (metric: Metric) => jget<FeatureCollection>(`/api/heatmap?metric=${metric}`),
   footprints: (bbox: string) => jget<FeatureCollection>(`/api/buildings?bbox=${bbox}`),
   createApplication: (payload: {
-    origin_address: string; profile: Profile; destinations: Destination[];
+    origin_address: string; profile: Profile; destinations: Destination[]; cohort_optin?: boolean;
   }) => jpost<{ id: number; status: string }>('/api/applications', payload),
+  myCohort: () => jget<Cohort>('/api/cohort/mine'),
+  setCohortOptin: (appId: number, optIn: boolean) =>
+    jpost<{ id: number; cohort_optin: boolean }>(`/api/applications/${appId}/cohort`, { opt_in: optIn }),
   uploadDocument: async (appId: number, file: File, docType: DocType = 'certificate') => {
     const fd = new FormData();
     fd.append('file', file);

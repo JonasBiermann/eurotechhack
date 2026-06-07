@@ -40,11 +40,22 @@ def city_cost(profile, dest: dict) -> float:
 
 
 def hk_baseline_cost(profile) -> float:
-    """Modeled current HK monthly cost for the same person, for savings deltas."""
-    cost = config.HK_BASELINE_RENT + config.HK_BASELINE_COL
+    """Current HK monthly cost of living for this person, for savings deltas.
+
+    Uses the sourced HK market reference (Numbeo), but **capped at the person's
+    monthly income**: a retiree cannot spend more than they receive (subsidised
+    housing + allowances are what make a low income liveable in HK). Without this
+    cap, a market baseline of ~HK$21k would imply a HK$4.5k-income senior "frees up"
+    more than they earn — see pct_income_freed. The cap keeps every saving figure
+    bounded by reality.
+    """
+    market = config.HK_BASELINE_RENT + config.HK_BASELINE_COL
     if bool(getattr(profile, "needs_residential_care", False)):
-        cost += config.HK_BASELINE_CARE_HOME
-    return float(cost)
+        market += config.HK_BASELINE_CARE_HOME
+    income = float(getattr(profile, "monthly_income", 0) or 0)
+    # A pensioner lives within their means; their real outgoings ≈ income (capped at
+    # the market reference for higher earners who bank the surplus).
+    return float(min(market, income)) if income > 0 else float(market)
 
 
 def estimate_return_trips(profile, dest: dict) -> float:
@@ -99,9 +110,11 @@ def compute(profile, dest: dict, lost_benefit_value: float, subscores: dict) -> 
     hk_cost = hk_baseline_cost(profile)
 
     # 1) Net savings + runway (HERO) -------------------------------------------------
+    # hk_cost is income-capped, so gross ≤ income and the percentage is bounded to a
+    # sensible 0–100% (negatives mean "needs savings to live there" — see runway).
     gross_savings = hk_cost - c_cost
     net_savings = gross_savings - float(lost_benefit_value or 0)
-    pct_income_freed = round(net_savings / max(income, 1.0), 3)
+    pct_income_freed = round(max(0.0, min(net_savings / max(income, 1.0), 1.0)), 3)
 
     surplus = income - c_cost  # can they live there month-to-month on income alone?
     if surplus >= 0:

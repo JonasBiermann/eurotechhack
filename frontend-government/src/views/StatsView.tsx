@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/LanguageProvider';
-import { type CaseEventKind, type Stats } from '../api/client';
+import { api, type CaseEventKind, type Cohort, type Stats } from '../api/client';
 
 const PIPELINE_ORDER = ['submitted', 'under_review', 'approved', 'moved', 'rejected'] as const;
 
@@ -20,6 +20,8 @@ function monthLabel(ym: string, lang: string) {
 
 export function StatsView({ stats, err }: { stats: Stats | null; err: boolean }) {
   const { t, lang } = useI18n();
+  const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  useEffect(() => { api.cohorts().then(setCohorts).catch(() => setCohorts([])); }, [stats]);
 
   // useMemo MUST be before any early returns (Rules of Hooks)
   const activityKinds = useMemo(
@@ -150,6 +152,43 @@ export function StatsView({ stats, err }: { stats: Stats | null; err: boolean })
           </div>
         </div>
       </div>
+
+      {/* ─── SAME-CITY COMMUNITIES (COHORTS) ──────────────── */}
+      {cohorts.length > 0 && (
+        <div className="stats-section">
+          <div className="stats-section-head">
+            {t('stats.cohorts.title')}
+            <span className="stats-section-total">
+              {cohorts.reduce((s, c) => s + c.members, 0)} {t('stats.cohorts.total')}
+            </span>
+          </div>
+          <div className="stats-section-body">
+            <p className="stats-sub">{t('stats.cohorts.sub')}</p>
+            <div className="cohort-grid">
+              {cohorts.map((c) => (
+                <div key={c.id} className="cohort-card">
+                  <div className="cohort-card-head">
+                    <span className="cohort-card-city">{lang === 'en' ? c.name_en : c.name_tc}</span>
+                    <span className="cohort-card-count">{c.members}</span>
+                  </div>
+                  <div className="cohort-card-meta">
+                    {c.moved > 0 && <span className="cohort-tag ok">{c.moved} {t('stats.cohorts.settled')}</span>}
+                    {c.approved - c.moved > 0 && (
+                      <span className="cohort-tag">{c.approved - c.moved} {t('stats.cohorts.approved')}</span>
+                    )}
+                    {c.members - c.approved > 0 && (
+                      <span className="cohort-tag muted">{c.members - c.approved} {t('stats.cohorts.pending')}</span>
+                    )}
+                  </div>
+                  <div className="cohort-card-cw">
+                    {t('stats.cohorts.caseworker')}: <b>{lang === 'en' ? c.caseworker.name_en : c.caseworker.name_tc}</b>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── RESIDENT PROFILES ────────────────────────────── */}
       <div className="stats-section">

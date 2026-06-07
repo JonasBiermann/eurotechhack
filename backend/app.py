@@ -38,6 +38,57 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# ----------------------------------------------------- same-city cohort (community)
+# A resident may opt in to be connected with others relocating to the same GBA city.
+# We do NOT run an open chat: a named HK Social Welfare Department caseworker is assigned
+# per city and mediates introductions — this keeps it inside the government's remit and
+# avoids moderation/liability of a social network.
+_CASEWORKERS = {
+    "shenzhen":  {"name_en": "Ms Chan Wai-yee",   "name_tc": "陳慧儀姑娘", "phone": "+852 2343 2101"},
+    "guangzhou": {"name_en": "Mr Ho Kwok-leung",  "name_tc": "何國良先生", "phone": "+852 2343 2102"},
+    "zhuhai":    {"name_en": "Ms Leung Suk-fan",   "name_tc": "梁淑芬姑娘", "phone": "+852 2343 2103"},
+    "zhongshan": {"name_en": "Mr Yip Chi-keung",   "name_tc": "葉志強先生", "phone": "+852 2343 2104"},
+    "foshan":    {"name_en": "Ms Tsang Mei-king",  "name_tc": "曾美琼姑娘", "phone": "+852 2343 2105"},
+    "dongguan":  {"name_en": "Mr Lai Ka-ming",     "name_tc": "黎家明先生", "phone": "+852 2343 2106"},
+    "jiangmen":  {"name_en": "Ms Fung Wai-han",    "name_tc": "馮慧嫻姑娘", "phone": "+852 2343 2107"},
+    "huizhou":   {"name_en": "Mr So Tin-yau",      "name_tc": "蘇天佑先生", "phone": "+852 2343 2108"},
+}
+_DEFAULT_CASEWORKER = {"name_en": "GBA Resettlement Liaison Team", "name_tc": "大灣區安居聯絡組",
+                       "phone": "+852 2343 2100"}
+_COHORT_WINDOW_DAYS = 120  # "moving around the same time as you"
+
+
+def _caseworker_for(city_id: str | None) -> dict:
+    cw = dict(_CASEWORKERS.get(city_id or "", _DEFAULT_CASEWORKER))
+    cw["office_en"] = "Social Welfare Department · Cross-boundary Elderly Care Team"
+    cw["office_tc"] = "社會福利署 · 跨境長者照顧組"
+    return cw
+
+
+def _dest_meta(city_id: str | None) -> dict:
+    for d in DESTINATIONS:
+        if d.get("id") == city_id:
+            return d
+    return {}
+
+
+def _top_city(destinations_json: str | None) -> dict | None:
+    """Return the chosen (first-ranked) GBA city dict for an application, or None."""
+    try:
+        dests = json.loads(destinations_json or "[]")
+    except (TypeError, ValueError):
+        return None
+    return dests[0] if dests else None
+
+
+def _mask_name(name: str | None) -> str:
+    """Privacy: 'Mrs Lee Siu-mei' -> 'Mrs Lee'. Keeps title + surname only."""
+    parts = (name or "").split()
+    if len(parts) >= 2 and parts[0] in ("Mr", "Mrs", "Ms", "Miss", "Dr"):
+        return f"{parts[0]} {parts[1]}"
+    return parts[0] if parts else "A resident"
+
+
 # ------------------------------------------------------------- auth (HKID-only)
 
 _HKID_RE = re.compile(r"^[A-Z]{1,2}[0-9]{6}(\([0-9A]\))?$")
@@ -270,12 +321,12 @@ def create_application(payload: dict = Body(...), resident: dict = Depends(curre
     cur = conn.execute(
         """INSERT INTO applications
            (created_at, status, applicant_name, origin_address,
-            profile_json, destinations_json, note, decided_at, resident_id)
-           VALUES (?,?,?,?,?,?,?,?,?)""",
+            profile_json, destinations_json, note, decided_at, resident_id, cohort_optin)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
         (_now(), "started", resident["name"], payload.get("origin_address"),
          json.dumps(payload.get("profile", {}), ensure_ascii=False),
          json.dumps(payload.get("destinations", []), ensure_ascii=False), None, None,
-         resident["id"]),
+         resident["id"], 1 if payload.get("cohort_optin") else 0),
     )
     app_id = cur.lastrowid
     _log_event(
@@ -334,6 +385,140 @@ def delete_application(app_id: int, resident: dict = Depends(current_resident)):
     conn.commit()
     conn.close()
     return {"ok": True}
+
+
+# ---------------------------------------------- same-city cohort (community landing)
+
+@app.post("/api/applications/{app_id}/cohort")
+def set_cohort_optin(app_id: int, payload: dict = Body(...),
+                     resident: dict = Depends(current_resident)):
+    """Resident opts in/out of being connected with others moving to the same city."""
+    optin = 1 if payload.get("opt_in") else 0
+    conn = db.connect()
+    row = conn.execute("SELECT resident_id FROM applications WHERE id=?", (app_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "application not found")
+    if row["resident_id"] != resident["id"]:
+        conn.close()
+        raise HTTPException(403, "not your application")
+    conn.execute("UPDATE applications SET cohort_optin=? WHERE id=?", (optin, app_id))
+    conn.commit()
+    conn.close()
+    return {"id": app_id, "cohort_optin": bool(optin)}
+
+
+def _cohort_members(conn, city_id: str) -> list[dict]:
+    """All non-rejected applications whose chosen city is ``city_id`` and who opted in."""
+    rows = conn.execute(
+        """SELECT id, applicant_name, status, created_at, cohort_optin, destinations_json
+             FROM applications WHERE status != 'rejected' AND cohort_optin = 1"""
+    ).fetchall()
+    out = []
+    for r in rows:
+        top = _top_city(r["destinations_json"])
+        if top and top.get("id") == city_id:
+            out.append(dict(r))
+    return out
+
+
+@app.get("/api/cohort/mine")
+def my_cohort(resident: dict = Depends(current_resident)):
+    """The same-city cohort for the authenticated resident's live application.
+
+    Always returns the cohort *around* the resident's chosen city (so the opt-in
+    toggle can say "5 others are going to Zhuhai"); ``opted_in`` reflects whether
+    this resident has joined."""
+    conn = db.connect()
+    mine = conn.execute(
+        """SELECT id, status, created_at, cohort_optin, destinations_json
+             FROM applications WHERE resident_id=? AND status != 'rejected'
+             ORDER BY id DESC LIMIT 1""",
+        (resident["id"],),
+    ).fetchone()
+    if not mine:
+        conn.close()
+        return {"has_destination": False}
+    top = _top_city(mine["destinations_json"])
+    if not top:
+        conn.close()
+        return {"has_destination": False}
+    city_id = top.get("id")
+    opted_in = bool(mine["cohort_optin"])
+
+    members = _cohort_members(conn, city_id)
+    conn.close()
+
+    peers = [m for m in members if m["id"] != mine["id"]]
+    moved = sum(1 for m in members if m["status"] == "moved")
+    approved = sum(1 for m in members if m["status"] in ("approved", "moved"))
+
+    now = datetime.now(timezone.utc)
+    in_window = 0
+    for m in members:
+        if m["id"] == mine["id"]:
+            continue
+        try:
+            c = datetime.fromisoformat((m["created_at"] or "").replace("Z", "+00:00"))
+            if abs((now - c).days) <= _COHORT_WINDOW_DAYS:
+                in_window += 1
+        except (ValueError, AttributeError):
+            pass
+
+    meta = _dest_meta(city_id)
+    return {
+        "has_destination": True,
+        "opted_in": opted_in,
+        "application_id": mine["id"],
+        "city_id": city_id,
+        "name_en": top.get("name_en"), "name_tc": top.get("name_tc"),
+        "members": len(members),            # opted-in cohort size (incl. self if opted)
+        "others": len(peers),               # everyone except this resident
+        "in_window": in_window,             # peers moving around the same time
+        "moved": moved,                     # peers already settled
+        "approved": approved,               # peers approved or settled
+        "caseworker": _caseworker_for(city_id),
+        "control_point": meta.get("control_point"),
+        "border_travel_hr": meta.get("border_travel_hr"),
+        "ehcv_institution": meta.get("ehcv_institution"),
+        "peers": [
+            {"name": _mask_name(p["applicant_name"]), "status": p["status"]}
+            for p in peers
+        ],
+    }
+
+
+@app.get("/api/cohorts")
+def list_cohorts():
+    """Government view: every same-city cohort with member/settled counts + caseworker."""
+    conn = db.connect()
+    rows = conn.execute(
+        """SELECT applicant_name, status, destinations_json
+             FROM applications WHERE status != 'rejected' AND cohort_optin = 1"""
+    ).fetchall()
+    conn.close()
+    by_city: dict[str, dict] = {}
+    for r in rows:
+        top = _top_city(r["destinations_json"])
+        if not top:
+            continue
+        cid = top.get("id")
+        c = by_city.setdefault(cid, {
+            "id": cid, "name_en": top.get("name_en"), "name_tc": top.get("name_tc"),
+            "members": 0, "moved": 0, "approved": 0, "names": [],
+        })
+        c["members"] += 1
+        if r["status"] == "moved":
+            c["moved"] += 1
+        if r["status"] in ("approved", "moved"):
+            c["approved"] += 1
+        c["names"].append(_mask_name(r["applicant_name"]))
+    out = []
+    for cid, c in by_city.items():
+        c["caseworker"] = _caseworker_for(cid)
+        out.append(c)
+    out.sort(key=lambda x: -x["members"])
+    return out
 
 
 # ---------------------------------------------- permits & allowances (self-service)
@@ -455,6 +640,7 @@ def _app_to_dict(row, conn) -> dict:
     d["documents"] = [dict(x) for x in docs]
     d["events"] = _events_for(conn, row["id"])
     d["top_destination"] = d["destinations"][0] if d["destinations"] else None
+    d["cohort_optin"] = bool(d.get("cohort_optin"))
     # Resident has submitted proof of move and is awaiting officer confirmation.
     d["proof_pending"] = (
         d.get("status") == "approved"

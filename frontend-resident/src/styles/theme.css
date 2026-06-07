@@ -437,6 +437,7 @@ input[type='text']:focus, input[type='number']:focus, input[type='date']:focus {
 .prov { font-size: 9.5px; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase;
   padding: 1px 6px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
 .prov-real { color: #0b8a5c; background: #e0f5ea; border-color: #9bdcbf; }
+.prov-sourced { color: #0b6e8a; background: #e0f1f7; border-color: #9bcfdc; }
 .prov-hardcoded { color: #1c5fb0; background: #e8edff; border-color: #b8c8f2; }
 .prov-modeled { color: #b06f08; background: #fdf0db; border-color: #ecd2a0; }
 
@@ -587,3 +588,41 @@ input[type='text']:focus, input[type='number']:focus, input[type='date']:focus {
   font-size: 16px; transition: 0.15s; box-shadow: var(--shadow-sm);
 }
 .avatar-mute-btn:hover { border-color: var(--accent); }
+
+/* ---- same-city community (cohort) ---- */
+.cohort-invite {
+  background: linear-gradient(135deg, var(--accent-soft), #fff);
+  border: 1px solid var(--accent-soft);
+}
+.cohort-headline { font-size: 17px; font-weight: 700; line-height: 1.4; color: var(--ink); }
+.cohort-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.cohort-pill {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 12px; font-size: 13px; color: var(--muted);
+}
+.cohort-pill b { font-size: 15px; color: var(--ink); }
+.cohort-pill.ok { background: #eafaf0; border-color: #bfe9cc; color: #15803d; }
+.cohort-pill.ok b { color: #15803d; }
+.cohort-shared { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 4px; }
+.cohort-peers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.cohort-peer {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #f5f7fa; border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 12px 5px 9px; font-size: 13px; color: var(--ink);
+}
+.cohort-peer-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.cohort-peer-tag { font-size: 11px; color: #15803d; font-weight: 600; }
+.cohort-caseworker {
+  display: flex; align-items: center; gap: 12px; margin-top: 16px;
+  background: #f5f7fa; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+}
+.cw-avatar {
+  width: 42px; height: 42px; border-radius: 50%; flex: none;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cw-info { flex: 1; min-width: 0; }
+.cw-name { font-weight: 700; font-size: 14px; }
+.cw-office { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.cohort-caseworker .btn { flex: none; text-decoration: none; }

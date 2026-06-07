@@ -164,7 +164,9 @@ def test_projection_block_present_and_sane():
     assert opt["return_trips_per_year"] >= 0
     assert opt["time_to_care_hk_weeks"] == 96          # real HA SOP feed (medicine routine, Apr25-Mar26)
     assert opt["data_provenance"]["time_to_care_hk_weeks"] == "real"
-    assert opt["data_provenance"]["rent_monthly_hkd"] == "modeled"
+    # cost-of-living figures are now real sourced data (Numbeo + HK official stats)
+    assert opt["data_provenance"]["rent_monthly_hkd"] == "sourced"
+    assert opt["data_provenance"]["net_savings_hkd"] == "sourced"
 
 
 def test_ranking_sorted_and_complete():

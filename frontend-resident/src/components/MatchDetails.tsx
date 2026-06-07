@@ -43,15 +43,20 @@ export function MatchDetails({ d }: { d: Destination }) {
     (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
   );
   const pct = d.pct_income_freed != null ? Math.round(d.pct_income_freed * 100) : null;
+  const net = d.net_savings_hkd ?? d.monthly_savings_hkd ?? 0;
+  const positive = net > 0;
 
   return (
     <div className="mdetails">
-      {/* headline: net savings + runway */}
+      {/* headline: net savings + runway. When the city costs more than this senior's
+          income can cover, we say so honestly instead of showing "negative savings". */}
       <div className="hero-save">
         <div className="hs-main">
-          <span className="hs-label">{t('res.netSave')}</span>
-          <span className="hs-amt">{hkd(d.net_savings_hkd ?? d.monthly_savings_hkd)}<small>/mo</small></span>
-          {pct != null && <span className="hs-sub">{pct}% {t('res.ofIncome')}</span>}
+          <span className="hs-label">{positive ? t('res.netSave') : t('res.shortfall')}</span>
+          <span className="hs-amt">{hkd(Math.abs(net))}<small>/mo</small></span>
+          {positive && pct != null
+            ? <span className="hs-sub">{pct}% {t('res.ofIncome')}</span>
+            : <span className="hs-sub warn">{t('res.shortfall.sub')}</span>}
           <ProvenanceBadge kind={prov.net_savings_hkd} />
         </div>
         <div className="hs-runway">

@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS applications (
   note             TEXT,                -- official's decision note
   decided_at       TEXT,
   declaration_at   TEXT,                -- when the resident declared truth & submitted
-  moved_at         TEXT                 -- when an officer confirmed the resident has settled
+  moved_at         TEXT,                -- when an officer confirmed the resident has settled
+  cohort_optin     INTEGER              -- 1 = wants to be connected with others moving to the same city
 );
 
 CREATE TABLE IF NOT EXISTS documents (
@@ -108,6 +109,7 @@ def init_db() -> None:
         "ALTER TABLE applications ADD COLUMN resident_id INTEGER",
         "ALTER TABLE applications ADD COLUMN declaration_at TEXT",
         "ALTER TABLE applications ADD COLUMN moved_at TEXT",
+        "ALTER TABLE applications ADD COLUMN cohort_optin INTEGER",
         "ALTER TABLE documents ADD COLUMN doc_type TEXT",
         "ALTER TABLE residents ADD COLUMN ehealth_consent INTEGER",
     ):

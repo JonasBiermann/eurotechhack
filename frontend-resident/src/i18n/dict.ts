@@ -311,6 +311,8 @@ export const DICT: Record<string, Entry> = {
   'res.lostBenefits': { en: 'Lost benefits', zh: '失去的福利' },
   'res.net': { en: 'Net monthly saving', zh: '每月淨節省' },
   'res.ofIncome': { en: 'of income freed', zh: '收入獲釋放' },
+  'res.shortfall': { en: "You'd need to top up", zh: '每月需補貼' },
+  'res.shortfall.sub': { en: 'this city costs more than your income covers', zh: '此城市開支高於你的收入' },
   'res.runway': { en: 'Savings would last', zh: '積蓄可支撐' },
   'res.sustainable': { en: 'Sustainable on income — savings preserved', zh: '收入足以維持 — 積蓄得以保留' },
 
@@ -340,9 +342,12 @@ export const DICT: Record<string, Entry> = {
 
   // ---- provenance badges ----
   'prov.real': { en: 'live data', zh: '實時數據' },
+  'prov.sourced': { en: 'sourced', zh: '已引用數據' },
   'prov.hardcoded': { en: 'gov source', zh: '政府資料' },
   'prov.modeled': { en: 'modeled', zh: '模擬' },
   'prov.real.t': { en: 'Real, live open data', zh: '真實的實時開放數據' },
+  'prov.sourced.t': { en: 'Sourced from published statistics — Numbeo cost-of-living + HK official data, Jun 2026',
+                      zh: '取自公開統計數據 — Numbeo生活成本及香港官方數據，2026年6月' },
   'prov.hardcoded.t': { en: 'Hardcoded from a cited government source', zh: '取自註明的政府資料' },
   'prov.modeled.t': { en: 'Modeled / seeded estimate (no open data exists)', zh: '模擬／估算（並無開放數據）' },
 
@@ -376,6 +381,29 @@ export const DICT: Record<string, Entry> = {
   'app.yourCity': { en: 'Your selected city', zh: '你選擇的城市' },
   'app.advantages': { en: 'Why this city suits you', zh: '這城市為何適合你' },
   'app.otherOptions': { en: 'Other cities you ranked', zh: '你排序的其他城市' },
+
+  // ---- same-city community (cohort) ----
+  'cohort.title': { en: "You won't arrive alone", zh: '你不會孤單地到埗' },
+  'cohort.invite.count': { en: '{n} other Hong Kong seniors are relocating to {city} too.',
+                           zh: '另有 {n} 位香港長者同樣將遷往{city}。' },
+  'cohort.invite.first': { en: 'Be among the first to settle in {city} with support.',
+                           zh: '在支援下成為首批遷往{city}的長者之一。' },
+  'cohort.invite.sub': { en: 'Opt in to be connected — a Social Welfare Department caseworker introduces you to others moving to the same city, so you can share the journey.',
+                         zh: '選擇加入後，社會福利署的個案主任會把你介紹給遷往同一城市的其他長者，讓你不再獨自上路。' },
+  'cohort.join': { en: 'Connect me with my cohort', zh: '把我與同行長者連繫起來' },
+  'cohort.leave': { en: 'Leave this community', zh: '退出這個社群' },
+  'cohort.privacy': { en: 'Your contact details are never shared automatically — introductions are made only by your caseworker, with your agreement.',
+                      zh: '你的聯絡資料不會自動分享 — 一切介紹均由個案主任在你同意下安排。' },
+  'cohort.joined.count': { en: "You're part of the {city} community — {n} others are on the same path.",
+                           zh: '你已加入{city}社群 — 另有 {n} 位長者與你同行。' },
+  'cohort.joined.first': { en: "You're part of the {city} community.", zh: '你已加入{city}社群。' },
+  'cohort.stat.window': { en: 'moving around the same time', zh: '同期遷居' },
+  'cohort.stat.moved': { en: 'already settled there', zh: '已在當地安頓' },
+  'cohort.shared.crossing': { en: 'Your shared border crossing', zh: '共用過境口岸' },
+  'cohort.shared.hospital': { en: 'Your shared voucher hospital', zh: '共用醫療券醫院' },
+  'cohort.peer.settled': { en: 'settled', zh: '已安頓' },
+  'cohort.caseworker.title': { en: 'Your community caseworker', zh: '你的社群個案主任' },
+  'cohort.contact': { en: 'Contact caseworker', zh: '聯絡個案主任' },
 
   // ---- content pages: Guidebook ----
   'guide.title': { en: 'Your Guide to Living in the GBA', zh: '大灣區安居指南' },

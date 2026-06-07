@@ -5,6 +5,7 @@ import { GovShell } from '../components/GovShell';
 import { ScoreDial, FactorBars, ringClass } from '../components/MatchScore';
 import { MatchDetails } from '../components/MatchDetails';
 import { NextSteps } from '../components/NextSteps';
+import { CohortCard } from '../components/CohortCard';
 import { PermitsPage } from './PermitsPage';
 
 /* simple inline line-icons (no emoji) */
@@ -229,6 +230,10 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
             )}
           </section>
 
+          {/* ---- same-city community ("you won't arrive alone"): right after the
+                 documents overview, surfaced once the move is approved ---- */}
+          {showNextSteps && <CohortCard app={a} />}
+
           {/* ---- next steps + proof of move (after approval) ---- */}
           {showNextSteps && (
             <NextSteps app={a} dest={top} onUploadProof={(fs) => uploadProof(a.id, fs)}
@@ -244,7 +249,9 @@ export function Dashboard({ onNew, initialAppId, onConsumedInitial }: {
                 <div className="info">
                   <h4>{L(top, 'name')} <span className="sec">{L(top, 'name') === top.name_en ? top.name_tc : top.name_en}</span></h4>
                   <div className="attrs">
-                    <span className="save-pill">{t('res.netSave')} <b>{`HK$${Math.round(top.net_savings_hkd ?? top.monthly_savings_hkd ?? 0).toLocaleString()}`}</b>{t('common.perMonth')}</span>
+                    {((top.net_savings_hkd ?? top.monthly_savings_hkd ?? 0) > 0)
+                      ? <span className="save-pill">{t('res.netSave')} <b>{`HK$${Math.round(top.net_savings_hkd ?? top.monthly_savings_hkd ?? 0).toLocaleString()}`}</b>{t('common.perMonth')}</span>
+                      : <span className="save-pill">{t('res.shortfall')} <b>{`HK$${Math.abs(Math.round(top.net_savings_hkd ?? top.monthly_savings_hkd ?? 0)).toLocaleString()}`}</b>{t('common.perMonth')}</span>}
                     <span>{t('d.travel')} <b>{top.travel_time_hr}{t('common.hours')}</b></span>
                   </div>
                   <div className="kv" style={{ borderBottom: 0, paddingBottom: 0 }}>

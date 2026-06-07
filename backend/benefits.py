@@ -8,13 +8,14 @@ actually apply to *this* senior at *this* city, and returns the list plus the to
 monthly value of losses (to net out) and any hard warnings.
 
 Status values: kept | gained | lost | at_risk | reduced.
-All amounts in HK$/month. Allowance amounts are real (swd.gov.hk); implicit subsidy
-values are modeled (see config).
+All amounts in HK$/month. Allowance amounts are real (swd.gov.hk) and the PRH subsidy
+is sourced (HA 2019/20); see config for per-number provenance.
 """
 import config
 
 
-def _entry(name, status, *, value=None, condition="", detail="", source="", provenance="hardcoded"):
+def _entry(name, status, *, value=None, condition="", detail="", source="",
+           provenance="hardcoded", netted=True):
     return {
         "name": name,
         "status": status,
@@ -23,6 +24,7 @@ def _entry(name, status, *, value=None, condition="", detail="", source="", prov
         "detail": detail,
         "source": source,
         "provenance": provenance,
+        "netted": netted,  # False = shown for transparency but NOT subtracted from savings
     }
 
 
@@ -97,8 +99,10 @@ def build_ledger(profile, dest: dict) -> dict:
         ledger.append(_entry(
             "HK public housing", "lost", value=config.PUBLIC_HOUSING_SUBSIDY_HKD,
             condition="Forfeited when taking Portable CSSA / Guangdong Scheme; cannot re-apply.",
-            detail="Implicit rent subsidy lost (modeled). This is netted into your net savings.",
-            source="swd.gov.hk / Housing Authority", provenance="modeled"))
+            detail="Implicit PRH rent subsidy you give up (HK$9,187/mo, HA 2019/20). Already "
+                   "reflected in paying market rent in your new city, so it is not deducted again here.",
+            source="Housing Authority — PRH implicit subsidy 2019/20",
+            provenance="sourced", netted=False))
         warnings.append("Taking portable CSSA forfeits your HK public housing — you cannot re-apply.")
     elif has_ph:
         ledger.append(_entry(
@@ -128,7 +132,7 @@ def build_ledger(profile, dest: dict) -> dict:
 
     lost_value = sum(
         e["monthly_value_hkd"] for e in ledger
-        if e["status"] in ("lost", "reduced") and e["monthly_value_hkd"]
+        if e["status"] in ("lost", "reduced") and e["monthly_value_hkd"] and e.get("netted", True)
     )
 
     return {

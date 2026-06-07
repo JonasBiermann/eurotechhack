@@ -487,7 +487,9 @@ function ResultsPanel({ ranked, choice, setChoice, onFocusCity, profile, speakin
                 <h4>{L(d, 'name')} <span className="sec">{L(d, 'name') === d.name_en ? d.name_tc : d.name_en}</span></h4>
                 <div className="attrs">
                   <span className="save-pill">
-                    {t('res.netSave')} <b>{`HK$${Math.round(d.net_savings_hkd ?? d.monthly_savings_hkd ?? 0).toLocaleString()}`}</b>{t('common.perMonth')}
+                    {((d.net_savings_hkd ?? d.monthly_savings_hkd ?? 0) > 0)
+                      ? <>{t('res.netSave')} <b>{`HK$${Math.round(d.net_savings_hkd ?? d.monthly_savings_hkd ?? 0).toLocaleString()}`}</b>{t('common.perMonth')}</>
+                      : <>{t('res.shortfall')} <b>{`HK$${Math.abs(Math.round(d.net_savings_hkd ?? d.monthly_savings_hkd ?? 0)).toLocaleString()}`}</b>{t('common.perMonth')}</>}
                   </span>
                   <span>{t('d.travel')} <b>{d.travel_time_hr}{t('common.hours')}</b></span>
                 </div>

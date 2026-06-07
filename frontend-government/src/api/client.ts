@@ -101,6 +101,13 @@ export interface Stats {
   events_by_kind: Partial<Record<CaseEventKind, number>>;
 }
 
+/** A same-city community of opted-in relocating seniors, with its assigned caseworker. */
+export interface Cohort {
+  id: string; name_en: string; name_tc: string;
+  members: number; moved: number; approved: number; names: string[];
+  caseworker: { name_en: string; name_tc: string; phone: string; office_en: string; office_tc: string };
+}
+
 export type Metric = 'age' | 'density' | 'nolift';
 export type FeatureCollection = { type: 'FeatureCollection'; features: any[] };
 
@@ -143,6 +150,7 @@ export const api = {
     jpost<Application>(`/api/applications/${id}/decision`, { decision, note }),
   events: (id: number) => jget<CaseEvent[]>(`/api/applications/${id}/events`),
   stats: () => jget<Stats>('/api/stats'),
+  cohorts: () => jget<Cohort[]>('/api/cohorts'),
   addEvent: (id: number, payload: {
     kind: CaseEventKind; body?: string; title_en?: string; title_tc?: string;
     author?: string;
