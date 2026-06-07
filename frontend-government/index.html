@@ -8,5 +8,16 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // When embedded in the presentation shell, forward slide-nav arrows up.
+      if (window.parent !== window) {
+        window.addEventListener('keydown', function (e) {
+          if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+          var t = e.target, tag = t && t.tagName;
+          if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+          window.parent.postMessage({ type: 'slide-nav', key: e.key }, '*');
+        });
+      }
+    </script>
   </body>
 </html>
